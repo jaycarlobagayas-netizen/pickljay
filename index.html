@@ -147,6 +147,24 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .bar{height:6px;border-radius:999px;background:var(--panel-2);overflow:hidden;min-width:60px}
 .bar i{display:block;height:100%;background:var(--accent)}
 
+/* per-team score inputs */
+.sc-in{width:52px;margin-left:auto;text-align:center;font-weight:750;font-size:19px;
+  font-variant-numeric:tabular-nums;padding:5px 4px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+.sc-in:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+.absent{text-decoration:line-through;opacity:.5}
+.subtag{font-size:9.5px;font-weight:800;letter-spacing:.05em;padding:1px 5px;border-radius:999px;
+  background:var(--accent-soft);color:var(--accent);margin-left:4px;vertical-align:1px}
+.gcard.cover{border-color:var(--warn);box-shadow:0 0 0 2px color-mix(in srgb,var(--warn) 18%,transparent)}
+/* attendance */
+.att-team{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.att-team .th{padding:8px 12px;font-weight:650;font-size:13px;color:#fff;display:flex;gap:8px;align-items:center}
+.att-row{display:flex;align-items:center;gap:9px;padding:6px 12px;border-top:1px solid var(--line);font-size:13.5px}
+.att-row:first-of-type{border-top:0}
+.att-row.out{background:var(--warn-soft)}
+.xbtn{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--panel);
+  font-size:14px;font-weight:800;line-height:1;display:grid;place-items:center;flex:none;color:var(--ink-3)}
+.xbtn[aria-pressed="true"]{background:var(--warn);border-color:transparent;color:#fff}
+.att-row .gcount{margin-left:auto;font-size:11.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
 /* quick score entry */
 .qs{display:flex;gap:6px;align-items:center;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
 .qs input{width:84px;text-align:center;font-variant-numeric:tabular-nums;font-weight:650;letter-spacing:.02em}
@@ -196,9 +214,11 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     </div>
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" data-view="teams" aria-selected="true">Teams</button>
+      <button role="tab" data-view="attend" aria-selected="false">Attendance</button>
       <button role="tab" data-view="schedule" aria-selected="false">Schedule</button>
       <button role="tab" data-view="courts" aria-selected="false">Courts</button>
       <button role="tab" data-view="standings" aria-selected="false">Rankings</button>
+      <button role="tab" data-view="history" aria-selected="false">History</button>
       <button role="tab" data-view="players" aria-selected="false">Players</button>
       <button role="tab" data-view="setup" aria-selected="false">Setup</button>
     </nav>
@@ -247,6 +267,26 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       </div>
     </div>
   </div>
+</section>
+
+<!-- ================= ATTENDANCE ================= -->
+<section class="view" id="view-attend">
+  <div class="card">
+    <div class="card-h">
+      <h2>Attendance</h2>
+      <span class="pill" id="attPill"></span>
+      <div class="spacer row no-print">
+        <label class="field" style="flex-direction:row;align-items:center;gap:6px">
+          Session <select id="attSession"></select></label>
+        <button class="btn" id="attAllIn">Mark all present</button>
+      </div>
+    </div>
+    <div class="card-b">
+      <p class="small muted" style="margin:0 0 12px">Tap <b>✕</b> beside anyone who is not here. Their unplayed matches in this session are handed to an available teammate straight away. Tap again when they arrive and they go back in.</p>
+      <div id="attGrid" class="team-grid"></div>
+    </div>
+  </div>
+  <div id="attImpact"></div>
 </section>
 
 <!-- ================= SCHEDULE ================= -->
@@ -303,6 +343,20 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       </div>
     </div>
     <div class="scroll"><div id="standBody"></div></div>
+  </div>
+</section>
+
+<!-- ================= HISTORY ================= -->
+<section class="view" id="view-history">
+  <div class="card">
+    <div class="card-h">
+      <h2>Game history</h2><span class="pill" id="histPill"></span>
+      <div class="spacer row no-print">
+        <input type="text" id="histSearch" placeholder="Filter by student or team…" style="min-width:180px">
+        <button class="btn sm" id="histCsv">Export CSV</button>
+      </div>
+    </div>
+    <div class="scroll" style="max-height:640px"><div id="histBody"></div></div>
   </div>
 </section>
 
@@ -419,8 +473,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   <div class="sheet" style="width:min(420px,100%)">
     <div class="sheet-b">
       <p id="askMsg" style="margin:0 0 16px;font-size:15px;line-height:1.5"></p>
-      <div class="row"><button class="btn ghost" id="askNo">Cancel</button>
-        <button class="btn primary spacer" id="askOk">Continue</button></div>
+      <div class="row" id="askBtns"></div>
     </div>
   </div>
 </div>
@@ -469,17 +522,21 @@ const uid = p => p+"_"+Math.random().toString(36).slice(2,9);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pk = (a,b)=> [a,b].sort().join("|");
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function ask(msg, okLabel){
+function askChoice(msg, opts){
   return new Promise(res=>{
-    const ov=$("#askOverlay"); if(!ov) return res(true);
+    const ov=$("#askOverlay"); if(!ov) return res(null);
     $("#askMsg").textContent=msg;
-    $("#askOk").textContent=okLabel||"Continue";
+    const row=$("#askBtns");
+    row.innerHTML=opts.map((o,i)=>
+      `<button class="btn ${o.primary?"primary":""}" data-ci="${i}"${i===1?' style="margin-left:auto"':""}>${esc(o.label)}</button>`).join("");
     ov.classList.add("open");
-    const done=v=>{ ov.classList.remove("open"); $("#askOk").onclick=null; $("#askNo").onclick=null; res(v); };
-    $("#askOk").onclick=()=>done(true);
-    $("#askNo").onclick=()=>done(false);
+    const done=v=>{ ov.classList.remove("open"); row.onclick=null; ov._cancel=null; res(v); };
+    row.onclick=e=>{ const b=e.target.closest("[data-ci]"); if(b) done(opts[+b.dataset.ci].value); };
+    ov._cancel=()=>done(opts[0].value);
   });
 }
+const ask=(msg,okLabel)=>askChoice(msg,
+  [{label:"Cancel",value:false},{label:okLabel||"Continue",value:true,primary:true}]).then(v=>v===true);
 function toast(msg){
   let t=$("#toast");
   if(!t){t=document.createElement("div");t.id="toast";
@@ -515,12 +572,15 @@ function seed(){
     const n = parseName(raw);
     return {id:"p"+String(i+1).padStart(2,"0"), raw, last:n.last, given:n.given, middle:n.middle, teamId:null};
   });
-  return {meta:{...DEFAULT_META}, players, teams:[], games:[], ui:{session:1, stand:"team"}};
+  return {meta:{...DEFAULT_META}, players, teams:[], games:[], attendance:{}, ui:{session:1, stand:"team"}};
 }
 function load(){
   try{
     const r = JSON.parse(localStorage.getItem(KEY));
-    if(r && r.players && r.players.length){ r.meta = {...DEFAULT_META, ...r.meta}; r.ui = r.ui||{session:1,stand:"team"}; return r; }
+    if(r && r.players && r.players.length){ r.meta = {...DEFAULT_META, ...r.meta};
+      r.ui = r.ui||{session:1,stand:"team"}; r.attendance = r.attendance||{};
+      (r.games||[]).forEach(g=>{ g.subs=g.subs||[]; if(g.walkover===undefined) g.walkover=null; });
+      return r; }
   }catch(e){}
   return seed();
 }
@@ -741,6 +801,7 @@ async function generateSchedule(bypass){
     for(let k=0;k<g;k++){
       S.games.push({id:uid("g"),tieId,round:ri+1,gameNo:k+1,teamA:x,teamB:y,
         a:px[k]||[], b:py[k]||[], sa:0,sb:0,status:"scheduled",server:"A",switched:false,
+        subs:[], walkover:null, needsCover:false,
         log:[],session:null,slot:null,court:null,startedAt:null,endedAt:null});
     }
   }));
@@ -752,6 +813,99 @@ async function reshufflePairs(){
   if(!S.games.length) return toast("Generate a schedule first");
   if(!(await ask("Redraw every partnership. Scores already recorded are kept, but the pairings change.","Reshuffle"))) return;
   generateSchedule(!S.meta.strictPairs);
+}
+
+/* ============================================================
+   ATTENDANCE, SUBSTITUTION AND WALKOVERS
+   An X on the attendance sheet pulls that student out of every unplayed
+   match in that session and puts an available teammate in their place.
+   Marking them present again puts them back.
+   ============================================================ */
+const isAbsent=(sess,pid)=> !!(S.attendance[sess] && S.attendance[sess][pid]);
+const absentList=sess=>Object.keys(S.attendance[sess]||{});
+
+function scheduledCount(){
+  const c={}; S.players.forEach(p=>c[p.id]=0);
+  S.games.forEach(g=>[...g.a,...g.b].forEach(id=>{ if(c[id]!=null) c[id]++; }));
+  return c;
+}
+function hasPartnered(x,y){
+  return S.games.some(g=>[g.a,g.b].some(pr=>pr.includes(x)&&pr.includes(y)));
+}
+/* A teammate who is here, free in this slot, has played least, and ideally
+   has not partnered the remaining player before. */
+function pickReplacement(g,tid,partner,sess){
+  const busy=new Set();
+  S.games.filter(x=>x.session===g.session&&x.slot===g.slot&&x.id!==g.id)
+         .forEach(x=>[...x.a,...x.b].forEach(id=>busy.add(id)));
+  const inGame=new Set([...g.a,...g.b]);
+  const count=scheduledCount();
+  const cands=S.players.filter(p=>p.teamId===tid && !isAbsent(sess,p.id)
+                               && !inGame.has(p.id) && !busy.has(p.id));
+  if(!cands.length) return null;
+  cands.sort((x,y)=> (hasPartnered(x.id,partner)?1:0)-(hasPartnered(y.id,partner)?1:0)
+                  || (count[x.id]||0)-(count[y.id]||0) || Math.random()-0.5);
+  return cands[0].id;
+}
+function refreshCover(sess){
+  S.games.filter(g=>g.session===sess&&g.status!=="final")
+         .forEach(g=>{ g.needsCover=[...g.a,...g.b].some(id=>isAbsent(sess,id)); });
+}
+function coverAbsence(sess,pid){
+  const r={filled:0,uncovered:0};
+  S.games.filter(g=>g.session===sess&&g.status!=="final").forEach(g=>{
+    ["a","b"].forEach(side=>{
+      const arr=g[side], i=arr.indexOf(pid);
+      if(i<0) return;
+      const tid=side==="a"?g.teamA:g.teamB;
+      const repl=pickReplacement(g,tid,arr[1-i],sess);
+      if(repl){ arr[i]=repl; (g.subs=g.subs||[]).push({side,idx:i,out:pid,in:repl}); r.filled++; }
+      else r.uncovered++;
+    });
+  });
+  refreshCover(sess); save(); return r;
+}
+function revertAbsence(sess,pid){
+  let n=0;
+  S.games.filter(g=>g.session===sess&&g.status!=="final"&&(g.subs||[]).length).forEach(g=>{
+    for(let i=g.subs.length-1;i>=0;i--){
+      const sub=g.subs[i];
+      if(sub.out!==pid) continue;
+      if(g[sub.side][sub.idx]===sub.in){ g[sub.side][sub.idx]=pid; g.subs.splice(i,1); n++; }
+    }
+  });
+  refreshCover(sess); save(); return n;
+}
+async function toggleAbsent(sess,pid){
+  const map=S.attendance[sess]||(S.attendance[sess]={});
+  const nm=fullName(P(pid));
+  if(map[pid]){
+    delete map[pid]; save();
+    const n=revertAbsence(sess,pid); renderAll();
+    toast(n?`${nm} is back in ${n} match${n>1?"es":""}`:`${nm} marked present`);
+  } else {
+    map[pid]=1; save();
+    const r=coverAbsence(sess,pid); renderAll();
+    toast(r.uncovered
+      ? `${nm} out · ${r.filled} covered, ${r.uncovered} need${r.uncovered>1?"":"s"} a walkover`
+      : r.filled ? `${nm} out · ${r.filled} match${r.filled>1?"es":""} covered by teammates`
+      : `${nm} marked absent`);
+  }
+}
+async function walkover(id){
+  const g=S.games.find(x=>x.id===id); if(!g) return;
+  const pick=await askChoice("Which team wins this match by default?",[
+    {label:"Cancel",value:null},
+    {label:teamName(g.teamA),value:"A"},
+    {label:teamName(g.teamB),value:"B",primary:true}]);
+  if(!pick) return;
+  g.walkover=pick; g.status="final"; g.log=[];
+  g.sa = pick==="A"?S.meta.pointsTo:0;
+  g.sb = pick==="B"?S.meta.pointsTo:0;
+  if(!g.startedAt) g.startedAt=Date.now();
+  g.endedAt=Date.now();
+  save(); renderAll();
+  toast(`${teamName(pick==="A"?g.teamA:g.teamB)} win by default`);
 }
 
 /* ---------- partnership / participation report ---------- */
@@ -856,42 +1010,53 @@ function renderRotation(){
       ${r.benched.length?`<div class="banner" style="margin-top:12px">These students are not in any match: ${r.benched.map(esc).join(", ")}. Assign them to a team, then regenerate.</div>`:""}
     </div></div>`;
 }
+function playerChip(g,id){
+  const p=P(id); if(!p) return "—";
+  const out=g.session&&isAbsent(g.session,id);
+  const isSub=(g.subs||[]).some(x=>x.in===id);
+  return `<span class="${out?"absent":""}">${esc(shortName(p))}</span>${isSub?`<span class="subtag">SUB</span>`:""}`;
+}
+function sideHTML(g,side){
+  const tid=side==="a"?g.teamA:g.teamB;
+  const ids=side==="a"?g.a:g.b;
+  const mine=side==="a"?g.sa:g.sb, other=side==="a"?g.sb:g.sa;
+  const win=g.status==="final"&&mine>other;
+  const cell = g.status==="final"
+    ? `<div class="sc">${mine}</div>`
+    : `<input class="sc-in" type="text" inputmode="numeric" autocomplete="off" maxlength="5"
+         placeholder="–" data-score="${g.id}" data-side="${side}"
+         aria-label="Score for ${esc(teamName(tid))}">`;
+  return `<div class="side ${win?"win":""}">
+    <span class="dot" style="background:${teamColor(tid)}"></span>
+    <div style="min-width:0"><div class="tname" style="color:${teamColor(tid)}">${esc(teamName(tid))}</div>
+      <div class="names">${ids.length?ids.map(id=>playerChip(g,id)).join(" / "):"—"}</div></div>
+    ${cell}</div>`;
+}
 function scoreBox(g){
   if(g.status==="final"){
     const win=g.sa>g.sb?g.teamA:g.teamB, hi=Math.max(g.sa,g.sb), lo=Math.min(g.sa,g.sb);
     return `<div class="qs-res"><span class="won">WIN</span>
-      <span><b>${esc(teamName(win))}</b> ${hi}–${lo}</span>
-      <button class="btn sm ghost no-print spacer" data-qedit="${g.id}">change</button></div>`;
+      <span><b>${esc(teamName(win))}</b> ${g.walkover?"by default":`${hi}–${lo}`}</span>
+      <button class="btn sm ghost no-print" style="margin-left:auto" data-qedit="${g.id}">change</button></div>`;
   }
   return `<div class="qs no-print">
-    <input type="text" inputmode="numeric" autocomplete="off" placeholder="11-2"
-           data-qs="${g.id}" aria-label="Final score, ${esc(teamName(g.teamA))} first">
-    <button class="btn sm primary" data-qsave="${g.id}">Save</button>
-    <span class="hint">${esc(teamName(g.teamA)).slice(0,10)} first</span>
+    <button class="btn sm primary" data-qsave="${g.id}">Save score</button>
+    <button class="btn sm" data-wo="${g.id}">Win by default</button>
+    ${g.needsCover?`<span class="hint" style="color:var(--warn);font-weight:700">no cover — short a player</span>`:""}
   </div>`;
 }
 function matchCard(g,editable){
-  const a=g.a.map(id=>shortName(P(id))).join(" / ")||"—";
-  const b=g.b.map(id=>shortName(P(id))).join(" / ")||"—";
-  const aw=g.status==="final"&&g.sa>g.sb, bw=g.status==="final"&&g.sb>g.sa;
   const badge = g.status==="live"?`<span class="pill live">● LIVE</span>`
               : g.status==="final"?`<span class="pill final">FINAL</span>`
               : `<span class="pill">Game ${g.gameNo}</span>`;
-  return `<div class="gcard ${g.status==="live"?"is-live":""} ${g.status==="final"?"is-final":""}" data-open="${g.id}">
+  const flag = g.needsCover&&g.status!=="final" ? "cover" : "";
+  return `<div class="gcard ${g.status==="live"?"is-live":""} ${g.status==="final"?"is-final":""} ${flag}" data-open="${g.id}">
     <div class="row" style="gap:7px;margin-bottom:6px">
       <span class="court-tag">Court ${g.court||"–"}</span>${badge}
-      ${editable?`<button class="btn sm ghost spacer no-print" data-edit="${g.id}" title="Edit">✎</button>`:""}
+      ${editable?`<button class="btn sm ghost no-print" style="margin-left:auto" data-edit="${g.id}" title="Edit">✎</button>`:""}
     </div>
-    <div class="side ${aw?"win":""}">
-      <span class="dot" style="background:${teamColor(g.teamA)}"></span>
-      <div><div class="tname" style="color:${teamColor(g.teamA)}">${esc(teamName(g.teamA))}</div><div class="names">${esc(a)}</div></div>
-      <div class="sc">${g.status==="scheduled"?"–":g.sa}</div>
-    </div>
-    <div class="side ${bw?"win":""}">
-      <span class="dot" style="background:${teamColor(g.teamB)}"></span>
-      <div><div class="tname" style="color:${teamColor(g.teamB)}">${esc(teamName(g.teamB))}</div><div class="names">${esc(b)}</div></div>
-      <div class="sc">${g.status==="scheduled"?"–":g.sb}</div>
-    </div>
+    ${sideHTML(g,"a")}
+    ${sideHTML(g,"b")}
     ${scoreBox(g)}
   </div>`;
 }
@@ -900,17 +1065,22 @@ function parseScore(txt){
   const m=String(txt||"").trim().match(/^(\d{1,2})\s*[-–:,.\s]\s*(\d{1,2})$/);
   return m ? [+m[1], +m[2]] : null;
 }
-async function quickSave(id, el){
+async function quickSave(id){
   const g=S.games.find(x=>x.id===id); if(!g) return;
-  const inp = el || document.querySelector(`[data-qs="${id}"]`);
-  const v=parseScore(inp && inp.value);
-  if(!v) return toast("Type the score like 11-2");
-  const [a,b]=v;
+  const ia=document.querySelector(`[data-score="${id}"][data-side="a"]`);
+  const ib=document.querySelector(`[data-score="${id}"][data-side="b"]`);
+  let a,b;
+  const pa=parseScore(ia&&ia.value), pb=parseScore(ib&&ib.value);
+  if(pa){ [a,b]=pa; }                    // "11-2" typed into one box still works
+  else if(pb){ a=pb[1]; b=pb[0]; }
+  else { a=parseInt(ia&&ia.value,10); b=parseInt(ib&&ib.value,10); }
+  if(isNaN(a)||isNaN(b)) return toast("Enter a score for both teams");
+  if(a<0||b<0) return toast("Scores cannot be negative");
   if(a===b) return toast("A doubles game cannot end level");
   const hi=Math.max(a,b), lo=Math.min(a,b), {pointsTo,winBy2,hardCap}=S.meta;
   const done = hi>=hardCap || (hi>=pointsTo && (!winBy2 || hi-lo>=2));
   if(!done && !(await ask(`${a}–${b} does not finish a game to ${pointsTo}${winBy2?" (win by 2)":""}. Record it anyway?`,"Record"))) return;
-  g.sa=a; g.sb=b; g.status="final"; g.log=[];
+  g.sa=a; g.sb=b; g.status="final"; g.walkover=null; g.log=[];
   if(!g.startedAt) g.startedAt=Date.now();
   g.endedAt=Date.now();
   save(); renderAll();
@@ -920,7 +1090,7 @@ async function quickSave(id, el){
 /* Jump to the next unplayed match so a whole session can be typed in one go. */
 function focusNextScore(){
   const view=$(".view.active"); if(!view) return;
-  const next=view.querySelector("[data-qs]");
+  const next=view.querySelector("[data-score]");
   if(!next) return;
   try{ next.focus({preventScroll:true}); }catch(e){ try{ next.focus(); }catch(e2){} }
   try{ if(next.scrollIntoView) next.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){}
@@ -1047,7 +1217,15 @@ function openEdit(id){
   EDIT=id; const g=S.games.find(x=>x.id===id); if(!g) return;
   const sel=(tid,cur,name)=>{
     const mem=S.players.filter(p=>p.teamId===tid);
-    return `<select data-ed="${name}" style="width:100%">${mem.map(p=>`<option value="${p.id}" ${p.id===cur?"selected":""}>${esc(fullName(p))}</option>`).join("")}</select>`;
+    const busy=new Set();
+    S.games.filter(x=>x.session===g.session&&x.slot===g.slot&&x.id!==g.id)
+           .forEach(x=>[...x.a,...x.b].forEach(id=>busy.add(id)));
+    return `<select data-ed="${name}" style="width:100%">${mem.map(p=>{
+      const tags=[];
+      if(g.session&&isAbsent(g.session,p.id)) tags.push("absent");
+      if(busy.has(p.id)) tags.push("on the other court");
+      return `<option value="${p.id}" ${p.id===cur?"selected":""}>${esc(fullName(p))}${tags.length?" \u2014 "+tags.join(", "):""}</option>`;
+    }).join("")}</select>`;
   };
   $("#edBody").innerHTML=`
     <div class="grid" style="gap:12px">
@@ -1076,11 +1254,86 @@ function saveEdit(){
 }
 
 /* ============================================================
+   ATTENDANCE VIEW
+   ============================================================ */
+function renderAttendance(){
+  const sel=$("#attSession"); if(!sel) return;
+  const cur=S.ui.attSession||1;
+  sel.innerHTML=Array.from({length:S.meta.sessions},(_,i)=>i+1)
+    .map(n=>`<option value="${n}" ${n===cur?"selected":""}>Session ${n}</option>`).join("");
+  const out=absentList(cur).length;
+  $("#attPill").textContent=`${S.players.length-out} present · ${out} absent`;
+
+  const sched=scheduledCount();
+  const played={}; S.players.forEach(p=>played[p.id]=0);
+  S.games.filter(g=>g.status==="final"&&!g.walkover)
+    .forEach(g=>[...g.a,...g.b].forEach(id=>{ if(played[id]!=null) played[id]++; }));
+
+  $("#attGrid").innerHTML = S.teams.length ? S.teams.map(t=>{
+    const mem=S.players.filter(p=>p.teamId===t.id);
+    return `<div class="att-team">
+      <div class="th" style="background:${t.color}">${esc(t.name)}
+        <span style="margin-left:auto;font-weight:600">${mem.filter(p=>!isAbsent(cur,p.id)).length}/${mem.length}</span></div>
+      ${mem.map(p=>{
+        const off=isAbsent(cur,p.id);
+        return `<div class="att-row ${off?"out":""}">
+          <button class="xbtn" data-att="${p.id}" aria-pressed="${off}" title="${off?"Mark present":"Mark absent"}">✕</button>
+          <span class="${off?"absent":""}">${esc(p.given)} <b>${esc(p.last)}</b></span>
+          <span class="gcount">${played[p.id]} played · ${sched[p.id]} scheduled</span>
+        </div>`;}).join("")}
+    </div>`;
+  }).join("") : `<div class="empty">Create teams first.</div>`;
+
+  const gaps=S.games.filter(g=>g.session===cur&&g.status!=="final"&&g.needsCover);
+  $("#attImpact").innerHTML = gaps.length ? `<div class="card"><div class="card-h"><h2>Matches short a player</h2>
+      <span class="pill" style="background:var(--warn-soft);color:var(--warn)">${gaps.length}</span></div>
+    <div class="card-b"><p class="small muted" style="margin:0 0 12px">No teammate was free to cover these. Award the match by default, or edit it by hand from the Schedule tab.</p>
+      <div class="court-cols">${gaps.map(g=>matchCard(g,true)).join("")}</div></div></div>` : "";
+}
+
+/* ============================================================
+   GAME HISTORY
+   ============================================================ */
+function renderHistory(){
+  const box=$("#histBody"); if(!box) return;
+  const q=($("#histSearch").value||"").toLowerCase().trim();
+  const done=S.games.filter(g=>g.status==="final")
+    .sort((x,y)=>(y.endedAt||0)-(x.endedAt||0)
+              ||(y.session||0)-(x.session||0)||(y.slot||0)-(x.slot||0));
+  $("#histPill").textContent=`${done.length} of ${S.games.length} played`;
+  const match=g=>{
+    if(!q) return true;
+    const hay=[teamName(g.teamA),teamName(g.teamB),
+      ...g.a.map(i=>fullName(P(i))),...g.b.map(i=>fullName(P(i)))].join(" ").toLowerCase();
+    return hay.includes(q);
+  };
+  const rows=done.filter(match);
+  box.innerHTML = rows.length ? `<table>
+    <thead><tr><th>When</th><th>Winner</th><th>Score</th><th>Beat</th><th>Note</th></tr></thead>
+    <tbody>${rows.map(g=>{
+      const aw=g.sa>g.sb;
+      const wT=aw?g.teamA:g.teamB, lT=aw?g.teamB:g.teamA;
+      const wP=(aw?g.a:g.b).map(i=>shortName(P(i))).join(" & ");
+      const lP=(aw?g.b:g.a).map(i=>shortName(P(i))).join(" & ");
+      const when=g.endedAt?new Date(g.endedAt):null;
+      const subs=(g.subs||[]).length;
+      return `<tr>
+        <td class="muted small">S${g.session||"–"} · C${g.court||"–"}${when?`<br>${when.toLocaleDateString([], {month:"short",day:"numeric"})} ${when.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}`:""}</td>
+        <td><span class="dot" style="background:${teamColor(wT)};margin-right:6px"></span><b>${esc(wP)}</b>
+            <div class="small muted">${esc(teamName(wT))}</div></td>
+        <td class="num"><b>${g.walkover?"W/O":`${Math.max(g.sa,g.sb)}–${Math.min(g.sa,g.sb)}`}</b></td>
+        <td>${esc(lP)}<div class="small muted">${esc(teamName(lT))}</div></td>
+        <td class="small muted">${g.walkover?"won by default":""}${subs?`${g.walkover?" · ":""}${subs} substitution${subs>1?"s":""}`:""}</td>
+      </tr>`;}).join("")}</tbody></table>`
+    : `<div class="empty">${done.length?"Nothing matches that filter.":"No games played yet."}</div>`;
+}
+
+/* ============================================================
    STANDINGS
    ============================================================ */
 function computeStats(){
   const TS={}, PS={};
-  S.teams.forEach(t=>TS[t.id]={id:t.id,name:t.name,color:t.color,gp:0,w:0,l:0,pf:0,pa:0,pts:0,tw:0,tl:0,td:0});
+  S.teams.forEach(t=>TS[t.id]={id:t.id,name:t.name,color:t.color,gp:0,w:0,l:0,pf:0,pa:0,pts:0,tw:0,tl:0});
   S.players.forEach(p=>PS[p.id]={id:p.id,gp:0,w:0,l:0,pf:0,pa:0});
   const ties={};
   S.teams.forEach(t=>TS[t.id].form=[]);
@@ -1092,16 +1345,24 @@ function computeStats(){
     const A=TS[g.teamA], B=TS[g.teamB];
     if(A){A.gp++;A.pf+=g.sa;A.pa+=g.sb;aw?(A.w++,A.pts+=S.meta.winPts):A.l++;A.form.push(aw);}
     if(B){B.gp++;B.pf+=g.sb;B.pa+=g.sa;aw?B.l++:(B.w++,B.pts+=S.meta.winPts);B.form.push(!aw);}
-    g.a.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sa;s.pa+=g.sb;aw?s.w++:s.l++;s.form.push(aw);});
-    g.b.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sb;s.pa+=g.sa;aw?s.l++:s.w++;s.form.push(!aw);});
-    const t=ties[g.tieId]||(ties[g.tieId]={a:g.teamA,b:g.teamB,aw:0,bw:0,n:0});
-    t.n++; aw?t.aw++:t.bw++;
+    /* A walkover counts for the teams, and for the pair that turned up.
+       The side that could not field a pair gets no personal record. */
+    if(!g.walkover||g.walkover==="A")
+      g.a.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sa;s.pa+=g.sb;aw?s.w++:s.l++;s.form.push(aw);});
+    if(!g.walkover||g.walkover==="B")
+      g.b.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sb;s.pa+=g.sa;aw?s.l++:s.w++;s.form.push(!aw);});
+    const t=ties[g.tieId]||(ties[g.tieId]={a:g.teamA,b:g.teamB,aw:0,bw:0,ap:0,bp:0,n:0});
+    t.n++; t.ap+=g.sa; t.bp+=g.sb; aw?t.aw++:t.bw++;
   });
   const totalPerTie=S.meta.gamesPerTie;
+  /* Ties are won or lost, never drawn: an equal split is settled on
+     points scored across the tie. */
   Object.values(ties).forEach(t=>{
     if(t.n<totalPerTie) return;            // tie still in progress
     const A=TS[t.a],B=TS[t.b]; if(!A||!B) return;
-    if(t.aw>t.bw){A.tw++;B.tl++;} else if(t.bw>t.aw){B.tw++;A.tl++;} else {A.td++;B.td++;}
+    const aWins = t.aw>t.bw || (t.aw===t.bw && t.ap>t.bp);
+    const bWins = t.bw>t.aw || (t.bw===t.aw && t.bp>t.ap);
+    if(aWins){A.tw++;B.tl++;} else if(bWins){B.tw++;A.tl++;}
   });
   return {TS,PS};
 }
@@ -1123,7 +1384,7 @@ function renderPodium(){
         ${teams.map((t,i)=>`<div class="lead">${medal(i)}
           <span class="dot" style="background:${t.color}"></span>
           <div class="nm"><b>${esc(t.name)}</b>
-            <span>${t.w}W–${t.l}L · ${t.pf-t.pa>0?"+":""}${t.pf-t.pa} diff · ${formHTML(t.form)}</span></div>
+            <span>${t.tw}-${t.tl} ties · ${t.w}W-${t.l}L · ${t.pf-t.pa>0?"+":""}${t.pf-t.pa} diff · ${formHTML(t.form)}</span></div>
           <div class="big">${t.pts}</div></div>`).join("")}
       </div></div>
     <div class="card" style="margin:0">
@@ -1145,13 +1406,13 @@ function renderStandings(){
   if(mode==="team"){
     const rows=Object.values(TS).sort((x,y)=> y.pts-x.pts || (y.pf-y.pa)-(x.pf-x.pa) || y.pf-x.pf);
     $("#standBody").innerHTML = rows.length? `<table>
-      <thead><tr><th class="num">Rank</th><th>Team</th><th class="num">Ties W-L-D</th><th class="num">GP</th><th class="num">W</th><th class="num">L</th>
+      <thead><tr><th class="num">Rank</th><th>Team</th><th class="num">Ties W-L</th><th class="num">GP</th><th class="num">W</th><th class="num">L</th>
       <th class="num">PF</th><th class="num">PA</th><th class="num">Diff</th><th class="num">Pts</th><th>Form</th><th>Win %</th></tr></thead>
       <tbody>${rows.map((r,i)=>{
         const d=r.pf-r.pa, wp=r.gp?Math.round(r.w/r.gp*100):0;
         return `<tr><td class="num">${medal(i)}</td>
           <td><span class="dot" style="background:${r.color};margin-right:7px"></span><b>${esc(r.name)}</b></td>
-          <td class="num">${r.tw}-${r.tl}-${r.td}</td>
+          <td class="num">${r.tw}-${r.tl}</td>
           <td class="num">${r.gp}</td><td class="num">${r.w}</td><td class="num">${r.l}</td>
           <td class="num">${r.pf}</td><td class="num">${r.pa}</td><td class="num">${d>0?"+":""}${d}</td>
           <td class="num"><b>${r.pts}</b></td>
@@ -1229,9 +1490,9 @@ const stamp = ()=> new Date().toISOString().slice(0,10);
 
 function exportTeamCSV(){
   const {TS}=computeStats();
-  const rows=[["Rank","Team","TiesW","TiesL","TiesD","GamesPlayed","Won","Lost","PointsFor","PointsAgainst","Diff","LeaguePts","WinPct"]];
+  const rows=[["Rank","Team","TiesW","TiesL","GamesPlayed","Won","Lost","PointsFor","PointsAgainst","Diff","LeaguePts","WinPct"]];
   Object.values(TS).sort((x,y)=>y.pts-x.pts||(y.pf-y.pa)-(x.pf-x.pa))
-    .forEach((r,i)=>rows.push([i+1,r.name,r.tw,r.tl,r.td,r.gp,r.w,r.l,r.pf,r.pa,r.pf-r.pa,r.pts,r.gp?(r.w/r.gp*100).toFixed(1):""]));
+    .forEach((r,i)=>rows.push([i+1,r.name,r.tw,r.tl,r.gp,r.w,r.l,r.pf,r.pa,r.pf-r.pa,r.pts,r.gp?(r.w/r.gp*100).toFixed(1):""]));
   dl(`${S.meta.course}_team_standings_${stamp()}.csv`,csv(rows),"text/csv");
 }
 function exportPlayerCSV(){
@@ -1245,12 +1506,13 @@ function exportPlayerCSV(){
   dl(`${S.meta.course}_student_stats_${stamp()}.csv`,csv(rows),"text/csv");
 }
 function exportGamesCSV(){
-  const rows=[["Session","Slot","Court","Round","TeamA","A_Player1","A_Player2","ScoreA","TeamB","B_Player1","B_Player2","ScoreB","Status","Winner"]];
+  const rows=[["Session","Slot","Court","Round","TeamA","A_Player1","A_Player2","ScoreA","TeamB","B_Player1","B_Player2","ScoreB","Status","Winner","WonByDefault","Substitutions"]];
   S.games.slice().sort((a,b)=>(a.session||99)-(b.session||99)||(a.slot||0)-(b.slot||0)||(a.court||0)-(b.court||0))
    .forEach(g=>rows.push([g.session||"",g.slot||"",g.court||"",g.round,
      teamName(g.teamA),fullName(P(g.a[0])),fullName(P(g.a[1])),g.status==="final"?g.sa:"",
      teamName(g.teamB),fullName(P(g.b[0])),fullName(P(g.b[1])),g.status==="final"?g.sb:"",
-     g.status, g.status==="final"?teamName(g.sa>g.sb?g.teamA:g.teamB):""]));
+     g.status, g.status==="final"?teamName(g.sa>g.sb?g.teamA:g.teamB):"",
+     g.walkover?"yes":"", (g.subs||[]).map(x=>`${fullName(P(x.out))} -> ${fullName(P(x.in))}`).join("; ")]));
   dl(`${S.meta.course}_all_matches_${stamp()}.csv`,csv(rows),"text/csv");
 }
 
@@ -1355,7 +1617,8 @@ function saveCfg(){
 /* ============================================================
    RENDER + EVENTS
    ============================================================ */
-function renderAll(){ renderTeams(); renderSchedule(); renderCourts(); renderStandings(); renderPlayers(); renderSetup(); }
+function renderAll(){ renderTeams(); renderAttendance(); renderSchedule(); renderCourts();
+  renderStandings(); renderHistory(); renderPlayers(); renderSetup(); }
 
 function showView(v){
   $$(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
@@ -1371,13 +1634,15 @@ document.addEventListener("click",e=>{
   const sess=t.closest("[data-sess]");
   if(sess){ S.ui.session=+sess.dataset.sess; save(); renderSchedule(); renderCourts(); return; }
 
+  const att=t.closest("[data-att]"); if(att){ e.stopPropagation(); return toggleAbsent(S.ui.attSession||1, att.dataset.att); }
+  const wo=t.closest("[data-wo]"); if(wo){ e.stopPropagation(); return walkover(wo.dataset.wo); }
   const qsv=t.closest("[data-qsave]"); if(qsv){ e.stopPropagation(); return quickSave(qsv.dataset.qsave); }
   const qed=t.closest("[data-qedit]");
   if(qed){ e.stopPropagation();
     const g=S.games.find(x=>x.id===qed.dataset.qedit); if(!g) return;
     Object.assign(g,{sa:0,sb:0,status:"scheduled",log:[],switched:false,server:"A",startedAt:null,endedAt:null});
     save(); renderAll(); return; }
-  if(t.closest(".qs")) { e.stopPropagation(); return; }
+  if(t.closest(".qs")||t.closest(".sc-in")||t.closest(".qs-res")) { e.stopPropagation(); return; }
   const ed=t.closest("[data-edit]"); if(ed){ e.stopPropagation(); return openEdit(ed.dataset.edit); }
   const op=t.closest("[data-open]"); if(op) return openScorer(op.dataset.open);
 
@@ -1421,21 +1686,32 @@ document.addEventListener("click",e=>{
   }
   if(t.id==="overlay") closeScorer();
   if(t.id==="editOverlay") $("#editOverlay").classList.remove("open");
-  if(t.id==="askOverlay"){ const n=$("#askNo"); if(n) n.click(); }
+  if(t.id==="askOverlay"){ const ov=$("#askOverlay"); if(ov._cancel) ov._cancel(); }
 });
 
 document.addEventListener("keydown",e=>{
-  const inp=e.target.closest&&e.target.closest("[data-qs]");
-  if(inp && e.key==="Enter"){ e.preventDefault(); quickSave(inp.dataset.qs, inp); }
+  const inp=e.target.closest&&e.target.closest("[data-score]");
+  if(inp && e.key==="Enter"){ e.preventDefault(); quickSave(inp.dataset.score); }
 },true);
 document.addEventListener("change",e=>{
   const as=e.target.closest("[data-assign]");
   if(as){ const p=P(as.dataset.assign); if(p){ p.teamId=as.value||null; save(); renderTeams(); renderSchedule(); renderStandings(); renderPlayers(); } }
   if(e.target.id==="courtSession"){ S.ui.session=+e.target.value; save(); renderCourts(); renderSchedule(); }
+  if(e.target.id==="attSession"){ S.ui.attSession=+e.target.value; save(); renderAttendance(); }
 });
 
 $("#rosterSearch").addEventListener("input",renderRoster);
 $("#playerSearch").addEventListener("input",renderPlayers);
+$("#histSearch").addEventListener("input",renderHistory);
+$("#histCsv").addEventListener("click",exportGamesCSV);
+$("#attAllIn").addEventListener("click",()=>{
+  const sess=S.ui.attSession||1;
+  const out=absentList(sess);
+  if(!out.length) return toast("Everyone is already marked present");
+  delete S.attendance[sess]; save();
+  let n=0; out.forEach(pid=>{ n+=revertAbsence(sess,pid); });
+  renderAll(); toast(`${out.length} marked present · ${n} match${n===1?"":"es"} restored`);
+});
 $("#ovClose").addEventListener("click",closeScorer);
 $("#edClose").addEventListener("click",()=>$("#editOverlay").classList.remove("open"));
 $("#buildTeams").addEventListener("click",()=>buildTeams(Math.max(2,Math.min(12,+$("#teamCount").value||6))));
