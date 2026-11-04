@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pickleball Tournament Board</title>
+<meta name="description" content="Live standings, schedule and personal records for the class pickleball tournament.">
+<style>
+:root{
+  --bg:#f6f7f5; --panel:#ffffff; --panel-2:#f0f2ee; --line:#dfe3da;
+  --ink:#1b2318; --ink-2:#5c6554; --ink-3:#8a9280;
+  --accent:#4f7a28; --accent-ink:#fff; --accent-soft:#e8f2da;
+  --live:#1d7a4f; --warn:#b4531a; --warn-soft:#fdeadd;
+  --shadow:0 1px 2px rgba(20,30,10,.06),0 8px 24px rgba(20,30,10,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#13170f; --panel:#1b2016; --panel-2:#222819; --line:#333c27;
+  --ink:#eef2e6; --ink-2:#aab59b; --ink-3:#7d876e;
+  --accent:#9ccb62; --accent-ink:#14200a; --accent-soft:#26331a;
+  --live:#6fd3a0; --warn:#e2a06a; --warn-soft:#3a2a18;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+} }
+:root[data-theme="dark"]{
+  --bg:#13170f; --panel:#1b2016; --panel-2:#222819; --line:#333c27;
+  --ink:#eef2e6; --ink-2:#aab59b; --ink-3:#7d876e;
+  --accent:#9ccb62; --accent-ink:#14200a; --accent-soft:#26331a;
+  --live:#6fd3a0; --warn:#e2a06a; --warn-soft:#3a2a18;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+h1,h2{margin:0;font-weight:650;letter-spacing:-.01em}
+h2{font-size:17px}
+button{font:inherit;color:inherit;cursor:pointer}
+
+.topbar{position:sticky;top:0;z-index:30;background:var(--panel);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1000px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.ball{width:26px;height:26px;border-radius:50%;background:var(--accent);flex:none;
+  background-image:radial-gradient(circle at 32% 30%,rgba(255,255,255,.55) 0 2px,transparent 3px),
+    radial-gradient(circle at 70% 26%,rgba(255,255,255,.5) 0 2px,transparent 3px),
+    radial-gradient(circle at 50% 62%,rgba(255,255,255,.5) 0 2px,transparent 3px),
+    radial-gradient(circle at 26% 70%,rgba(255,255,255,.45) 0 2px,transparent 3px),
+    radial-gradient(circle at 74% 70%,rgba(255,255,255,.45) 0 2px,transparent 3px)}
+.brand b{display:block;font-size:15px;line-height:1.2}
+.brand span{font-size:11.5px;color:var(--ink-3)}
+.tabs{display:flex;gap:2px;background:var(--panel-2);padding:3px;border-radius:11px;overflow-x:auto;max-width:100%}
+.tabs button{border:0;background:transparent;color:var(--ink-2);padding:7px 14px;border-radius:9px;font-size:13.5px;font-weight:550;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+main{max-width:1000px;margin:0 auto;padding:18px 16px 70px}
+.view{display:none}.view.active{display:block}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:14px}
+.card-h{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-b{padding:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{margin-left:auto}
+.muted{color:var(--ink-3)}.small{font-size:12.5px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--panel-2);color:var(--ink-2)}
+.pill.live{background:color-mix(in srgb,var(--live) 18%,transparent);color:var(--live)}
+.pill.final{background:var(--accent-soft);color:var(--accent)}
+.dot{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none}
+.empty{padding:40px 16px;text-align:center;color:var(--ink-3)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:650}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+input[type=text]{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;width:100%}
+
+.courts{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
+.court{border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+.court-h{padding:9px 14px;background:var(--panel-2);font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);display:flex;gap:8px;align-items:center}
+.court-b{padding:13px 14px}
+.side{display:flex;align-items:center;gap:9px;padding:6px 0}
+.side .names{font-size:13.5px;line-height:1.35;min-width:0}
+.side .tname{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.side .sc{margin-left:auto;font-weight:750;font-variant-numeric:tabular-nums;font-size:26px;min-width:34px;text-align:right}
+.side.win .sc{color:var(--accent)}
+.vs{font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;padding-left:18px}
+.bar{height:6px;border-radius:999px;background:var(--panel-2);overflow:hidden;min-width:54px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.rank{width:26px;height:26px;border-radius:8px;display:inline-grid;place-items:center;font-size:12px;font-weight:700;background:var(--panel-2);color:var(--ink-2)}
+.rank.top{background:var(--accent);color:var(--accent-ink)}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-size:22px;font-weight:720;font-variant-numeric:tabular-nums}
+.banner{border:1px solid var(--line);background:var(--warn-soft);color:var(--warn);padding:11px 14px;border-radius:12px;font-size:13px;font-weight:550}
+.sug{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.sug button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 12px;font-size:13px}
+@media (max-width:620px){ .brand span{display:none} main{padding:14px 12px 70px} }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="ball"></div>
+      <div><b id="bTitle">Pickleball Tournament</b><span id="bSub">Class board</span></div>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-view="live" aria-selected="true">Live</button>
+      <button role="tab" data-view="teams" aria-selected="false">Teams</button>
+      <button role="tab" data-view="me" aria-selected="false">My games</button>
+      <button role="tab" data-view="schedule" aria-selected="false">Schedule</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div id="loadState"></div>
+
+  <section class="view active" id="view-live">
+    <div class="card">
+      <div class="card-h"><h2>On court now</h2><span class="pill" id="liveWhen"></span></div>
+      <div class="card-b"><div id="liveCourts" class="courts"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Team standings</h2><span class="pill" id="playedPill"></span></div>
+      <div class="scroll"><div id="liveTable"></div></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-teams">
+    <div class="card">
+      <div class="card-h"><h2>Teams</h2></div>
+      <div class="card-b"><div id="teamList" class="courts"></div></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-me">
+    <div class="card">
+      <div class="card-h"><h2>Find your record</h2></div>
+      <div class="card-b">
+        <input type="text" id="meSearch" placeholder="Type your surname…" autocomplete="off">
+        <div class="sug" id="meSug"></div>
+      </div>
+    </div>
+    <div id="meOut"></div>
+  </section>
+
+  <section class="view" id="view-schedule">
+    <div class="card">
+      <div class="card-h"><h2>Full schedule</h2>
+        <div class="tabs spacer" id="sessTabs" style="background:transparent;padding:0"></div></div>
+      <div class="card-b"><div id="schedOut"></div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ============================================================
+   Student board — read only.
+   Data arrives from, in order: #d= in the link, data.json beside
+   this file, or the teacher's own browser storage on their device.
+   ============================================================ */
+const BOARD_V="1";
+const B64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const dec1=c=>B64.indexOf(c);
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fold=s=>String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+
+let D=null, VIEW="live", ME=null;
+
+/* ---------- decoding ---------- */
+function decode(text){
+  const f=String(text).split("|");
+  if(f[0]!==BOARD_V) throw new Error("This board link was made by a different version of the app.");
+  const nums=f[3].split(",").map(Number);
+  const meta={course:f[1],title:f[2],pointsTo:nums[0],switchAt:nums[1],hardCap:nums[2],
+    winBy2:!!nums[3],gamesPerTie:nums[4],sessions:nums[5],courts:nums[6],slots:nums[7],winPts:nums[8],
+    updated:f[4]};
+  const teams=f[5]?f[5].split(";").map((t,i)=>{const [name,color]=t.split("^");return {i,name,color};}):[];
+  const players=f[6]?f[6].split(";").map((p,i)=>{
+    const [last,given,ti]=p.split("^");
+    return {i,last,given,team:ti===""?null:+ti};
+  }):[];
+  const games=[]; const raw=f[7]||"";
+  const STS=["scheduled","live","final"];
+  for(let k=0;k+12<=raw.length;k+=12){
+    const c=raw.slice(k,k+12).split("").map(dec1);
+    games.push({session:c[0]||null,slot:c[1]||null,court:c[2]||null,
+      teamA:c[3],teamB:c[4],a:[c[5],c[6]],b:[c[7],c[8]],
+      sa:c[9],sb:c[10],status:STS[c[11]]||"scheduled"});
+  }
+  return {meta,teams,players,games};
+}
+const team=i=>D.teams[i]||{name:"—",color:"#888"};
+const player=i=>D.players[i]||null;
+const nameOf=i=>{const p=player(i);return p?`${p.given} ${p.last}`:"—";};
+const shortOf=i=>{const p=player(i);return p?`${p.given.split(" ")[0]} ${p.last}`:"—";};
+
+/* ---------- loading ---------- */
+async function load(){
+  const hash=location.hash||"";
+  const m=hash.match(/[#&]d=([^&]+)/);
+  if(m){
+    try{ D=decode(decodeURIComponent(m[1])); return "link"; }
+    catch(e){ fail(e.message); return null; }
+  }
+  try{
+    const res=await fetch("data.json?t="+Date.now(),{cache:"no-store"});
+    if(res.ok){
+      const j=await res.json();
+      D=decode(j.payload); return "file";
+    }
+  }catch(e){}
+  try{
+    const raw=localStorage.getItem("ped013-pickleball-v1");
+    if(raw){ D=fromAdminState(JSON.parse(raw)); return "local"; }
+  }catch(e){}
+  return null;
+}
+/* The teacher's own device: read the admin app's state directly. */
+function fromAdminState(S){
+  const ti={}; (S.teams||[]).forEach((t,i)=>ti[t.id]=i);
+  const pi={}; (S.players||[]).forEach((p,i)=>pi[p.id]=i);
+  return {
+    meta:{course:S.meta.course,title:S.meta.title,pointsTo:S.meta.pointsTo,switchAt:S.meta.switchAt,
+      hardCap:S.meta.hardCap,winBy2:S.meta.winBy2,gamesPerTie:S.meta.gamesPerTie,sessions:S.meta.sessions,
+      courts:S.meta.courts,slots:S.meta.slotsPerSession,winPts:S.meta.winPts,updated:new Date().toISOString()},
+    teams:(S.teams||[]).map((t,i)=>({i,name:t.name,color:t.color})),
+    players:(S.players||[]).map((p,i)=>({i,last:p.last,given:p.given,team:p.teamId!=null&&ti[p.teamId]!=null?ti[p.teamId]:null})),
+    games:(S.games||[]).map(g=>({session:g.session,slot:g.slot,court:g.court,
+      teamA:ti[g.teamA],teamB:ti[g.teamB],
+      a:[pi[g.a[0]],pi[g.a[1]]],b:[pi[g.b[0]],pi[g.b[1]]],
+      sa:g.sa,sb:g.sb,status:g.status}))
+  };
+}
+function fail(msg){
+  $("#loadState").innerHTML=`<div class="banner" style="margin-bottom:14px">${esc(msg)}</div>`;
+}
+
+/* ---------- stats ---------- */
+function stats(){
+  const T=D.teams.map(t=>({...t,gp:0,w:0,l:0,pf:0,pa:0,pts:0,tw:0,tl:0,td:0}));
+  const P=D.players.map(p=>({...p,gp:0,w:0,l:0,pf:0,pa:0}));
+  const ties={};
+  D.games.filter(g=>g.status==="final").forEach(g=>{
+    const aw=g.sa>g.sb, A=T[g.teamA], B=T[g.teamB];
+    if(A){A.gp++;A.pf+=g.sa;A.pa+=g.sb;aw?(A.w++,A.pts+=D.meta.winPts):A.l++;}
+    if(B){B.gp++;B.pf+=g.sb;B.pa+=g.sa;aw?B.l++:(B.w++,B.pts+=D.meta.winPts);}
+    g.a.forEach(i=>{const s=P[i];if(!s)return;s.gp++;s.pf+=g.sa;s.pa+=g.sb;aw?s.w++:s.l++;});
+    g.b.forEach(i=>{const s=P[i];if(!s)return;s.gp++;s.pf+=g.sb;s.pa+=g.sa;aw?s.l++:s.w++;});
+    const k=g.teamA+"v"+g.teamB, t=ties[k]||(ties[k]={aw:0,bw:0,n:0});
+    t.n++; aw?t.aw++:t.bw++;
+  });
+  Object.entries(ties).forEach(([k,t])=>{
+    if(t.n<D.meta.gamesPerTie) return;
+    const [x,y]=k.split("v").map(Number), A=T[x], B=T[y];
+    if(!A||!B) return;
+    if(t.aw>t.bw){A.tw++;B.tl++;} else if(t.bw>t.aw){B.tw++;A.tl++;} else {A.td++;B.td++;}
+  });
+  return {T,P};
+}
+
+/* ---------- rendering ---------- */
+function sideRow(tIdx,ids,score,win,showScore){
+  const t=team(tIdx);
+  return `<div class="side ${win?"win":""}">
+    <span class="dot" style="background:${t.color}"></span>
+    <div class="names"><div class="tname" style="color:${t.color}">${esc(t.name)}</div>
+      ${ids.map(i=>esc(shortOf(i))).join(" &amp; ")}</div>
+    <div class="sc">${showScore?score:"–"}</div></div>`;
+}
+function renderLive(){
+  const live=D.games.filter(g=>g.status==="live");
+  const played=D.games.filter(g=>g.status==="final").length;
+  $("#playedPill").textContent=`${played} of ${D.games.length} matches played`;
+
+  let show=live, label="";
+  if(!live.length){
+    const done=D.games.filter(g=>g.status==="final");
+    if(done.length){
+      const last=Math.max(...done.map(g=>g.session||0));
+      show=done.filter(g=>g.session===last).slice(-D.meta.courts);
+      label=`Last results — session ${last}`;
+    } else {
+      const first=D.games.filter(g=>g.session).sort((a,b)=>a.session-b.session||a.slot-b.slot)[0];
+      show=first?D.games.filter(g=>g.session===first.session&&g.slot===first.slot):[];
+      label="Up next";
+    }
+  } else label="Playing now";
+  $("#liveWhen").textContent=label;
+
+  $("#liveCourts").innerHTML = show.length ? show.map(g=>{
+    const isLive=g.status==="live", isFinal=g.status==="final";
+    return `<div class="court">
+      <div class="court-h">Court ${g.court||"–"} · Session ${g.session||"–"}
+        ${isLive?'<span class="pill live spacer">● LIVE</span>':isFinal?'<span class="pill final spacer">FINAL</span>':'<span class="pill spacer">UP NEXT</span>'}</div>
+      <div class="court-b">
+        ${sideRow(g.teamA,g.a,g.sa,isFinal&&g.sa>g.sb,isLive||isFinal)}
+        <div class="vs">versus</div>
+        ${sideRow(g.teamB,g.b,g.sb,isFinal&&g.sb>g.sa,isLive||isFinal)}
+      </div></div>`;
+  }).join("") : `<div class="empty">No matches to show yet.</div>`;
+
+  const {T}=stats();
+  const rows=T.slice().sort((a,b)=>b.pts-a.pts||(b.pf-b.pa)-(a.pf-a.pa)||b.pf-a.pf);
+  $("#liveTable").innerHTML=`<table><thead><tr>
+      <th class="num">#</th><th>Team</th><th class="num">Ties</th><th class="num">GP</th>
+      <th class="num">W</th><th class="num">L</th><th class="num">Diff</th><th class="num">Pts</th><th>Win %</th>
+    </tr></thead><tbody>${rows.map((r,i)=>{
+      const d=r.pf-r.pa, wp=r.gp?Math.round(r.w/r.gp*100):0;
+      return `<tr><td class="num"><span class="rank ${i===0&&r.gp?"top":""}">${i+1}</span></td>
+        <td><span class="dot" style="background:${r.color};margin-right:7px"></span><b>${esc(r.name)}</b></td>
+        <td class="num">${r.tw}-${r.tl}${r.td?"-"+r.td:""}</td>
+        <td class="num">${r.gp}</td><td class="num">${r.w}</td><td class="num">${r.l}</td>
+        <td class="num">${d>0?"+":""}${d}</td><td class="num"><b>${r.pts}</b></td>
+        <td><div class="row" style="gap:7px"><div class="bar" style="flex:1"><i style="width:${wp}%"></i></div>
+          <span class="small muted">${wp}%</span></div></td></tr>`;
+    }).join("")}</tbody></table>`;
+}
+function renderTeams(){
+  const {T,P}=stats();
+  $("#teamList").innerHTML=D.teams.map(t=>{
+    const mem=P.filter(p=>p.team===t.i).sort((a,b)=>b.w-a.w||a.last.localeCompare(b.last));
+    const s=T[t.i];
+    return `<div class="court">
+      <div class="court-h" style="background:${t.color};color:#fff">${esc(t.name)}
+        <span class="spacer" style="font-weight:600">${s.w}W · ${s.l}L</span></div>
+      <div class="court-b"><table><tbody>${mem.map(p=>`<tr>
+        <td>${esc(p.given)} <b>${esc(p.last)}</b></td>
+        <td class="num muted small">${p.gp} GP</td>
+        <td class="num">${p.w}W-${p.l}L</td></tr>`).join("")}</tbody></table></div></div>`;
+  }).join("") || `<div class="empty">No teams yet.</div>`;
+}
+function renderMe(){
+  const q=fold($("#meSearch").value.trim());
+  const sug=$("#meSug");
+  if(q.length>=1 && !ME){
+    const hits=D.players.filter(p=>fold(p.last+" "+p.given).includes(q)).slice(0,8);
+    sug.innerHTML=hits.map(p=>`<button data-me="${p.i}">${esc(p.last)}, ${esc(p.given)}</button>`).join("")
+      || `<span class="small muted">No student by that name.</span>`;
+  } else sug.innerHTML="";
+
+  if(ME==null){ $("#meOut").innerHTML=""; return; }
+  const {P}=stats(), me=P[ME], t=me.team!=null?team(me.team):null;
+  const mine=D.games.map((g,gi)=>({g,gi}))
+    .filter(({g})=>g.a.includes(ME)||g.b.includes(ME))
+    .sort((x,y)=>(x.g.session||99)-(y.g.session||99)||(x.g.slot||0)-(y.g.slot||0));
+  const d=me.pf-me.pa, wp=me.gp?Math.round(me.w/me.gp*100):0;
+  $("#meOut").innerHTML=`<div class="card">
+    <div class="card-h"><h2>${esc(me.given)} ${esc(me.last)}</h2>
+      ${t?`<span class="pill"><span class="dot" style="background:${t.color}"></span>${esc(t.name)}</span>`:""}
+      <button class="pill spacer" id="meClear">change</button></div>
+    <div class="card-b">
+      <div class="row" style="gap:26px">
+        <div class="stat"><span class="small muted">Games</span><b>${me.gp}</b></div>
+        <div class="stat"><span class="small muted">Won</span><b>${me.w}</b></div>
+        <div class="stat"><span class="small muted">Lost</span><b>${me.l}</b></div>
+        <div class="stat"><span class="small muted">Point diff</span><b>${d>0?"+":""}${d}</b></div>
+        <div class="stat"><span class="small muted">Win rate</span><b>${me.gp?wp+"%":"–"}</b></div>
+      </div>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>When</th><th>Partner</th><th>Against</th><th class="num">Score</th><th class="num">Result</th></tr></thead>
+      <tbody>${mine.map(({g})=>{
+        const mineA=g.a.includes(ME);
+        const partner=(mineA?g.a:g.b).find(i=>i!==ME);
+        const opp=(mineA?g.b:g.a).map(i=>shortOf(i)).join(" & ");
+        const my=mineA?g.sa:g.sb, th=mineA?g.sb:g.sa;
+        const res=g.status!=="final"?`<span class="muted">${g.status==="live"?"live":"—"}</span>`
+          :(my>th?`<b style="color:var(--accent)">WON</b>`:`<span class="muted">lost</span>`);
+        return `<tr><td class="muted small">S${g.session||"–"} · C${g.court||"–"}</td>
+          <td>${esc(shortOf(partner))}</td>
+          <td class="muted">${esc(opp)} <span class="small">(${esc(team(mineA?g.teamB:g.teamA).name)})</span></td>
+          <td class="num">${g.status==="final"?`${my}–${th}`:`<span class="muted">—</span>`}</td>
+          <td class="num">${res}</td></tr>`;
+      }).join("")||`<tr><td colspan="5" class="empty">No matches scheduled.</td></tr>`}</tbody>
+    </table></div></div>`;
+}
+let SESS=1;
+function renderSchedule(){
+  const sessions=[...new Set(D.games.filter(g=>g.session).map(g=>g.session))].sort((a,b)=>a-b);
+  if(!sessions.includes(SESS)) SESS=sessions[0]||1;
+  $("#sessTabs").innerHTML=sessions.map(s=>{
+    const gs=D.games.filter(g=>g.session===s), f=gs.filter(g=>g.status==="final").length;
+    return `<button data-sess="${s}" aria-selected="${s===SESS}">S${s} <span class="muted small">${f}/${gs.length}</span></button>`;
+  }).join("");
+  const gs=D.games.filter(g=>g.session===SESS).sort((a,b)=>a.slot-b.slot||a.court-b.court);
+  const slots=[...new Set(gs.map(g=>g.slot))];
+  $("#schedOut").innerHTML=slots.map(k=>`
+    <div style="margin-bottom:14px">
+      <div class="small muted" style="font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:7px">Slot ${k}</div>
+      <div class="courts">${gs.filter(g=>g.slot===k).map(g=>{
+        const fin=g.status==="final", live=g.status==="live";
+        return `<div class="court"><div class="court-h">Court ${g.court}
+            ${live?'<span class="pill live spacer">● LIVE</span>':fin?'<span class="pill final spacer">FINAL</span>':''}</div>
+          <div class="court-b">
+            ${sideRow(g.teamA,g.a,g.sa,fin&&g.sa>g.sb,fin||live)}
+            ${sideRow(g.teamB,g.b,g.sb,fin&&g.sb>g.sa,fin||live)}
+          </div></div>`;
+      }).join("")}</div></div>`).join("") || `<div class="empty">Nothing scheduled in this session.</div>`;
+}
+function renderAll(){
+  document.title=`${D.meta.course} Pickleball Board`;
+  $("#bTitle").textContent=`${D.meta.course} Pickleball`;
+  const when=D.meta.updated?new Date(D.meta.updated):null;
+  $("#bSub").textContent=when&&!isNaN(when)
+    ? `Updated ${when.toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`
+    : D.meta.title;
+  renderLive(); renderTeams(); renderMe(); renderSchedule();
+}
+function show(v){
+  VIEW=v;
+  $$(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
+  $$("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.view===v));
+}
+
+document.addEventListener("click",e=>{
+  const tab=e.target.closest("#tabs button"); if(tab) return show(tab.dataset.view);
+  const me=e.target.closest("[data-me]");
+  if(me){ ME=+me.dataset.me; $("#meSearch").value=""; renderMe(); return; }
+  if(e.target.id==="meClear"){ ME=null; $("#meSearch").value=""; $("#meSearch").focus(); renderMe(); return; }
+  const ss=e.target.closest("[data-sess]");
+  if(ss){ SESS=+ss.dataset.sess; renderSchedule(); return; }
+});
+$("#meSearch").addEventListener("input",()=>{ ME=null; renderMe(); });
+
+(async function init(){
+  const src=await load();
+  if(!D){
+    $("#loadState").innerHTML=`<div class="card"><div class="card-b">
+      <h2 style="margin-bottom:8px">Waiting for tournament data</h2>
+      <p class="small muted" style="margin:0 0 10px">This board shows the standings once your teacher shares them. It gets them in one of two ways:</p>
+      <ul class="small muted" style="margin:0;padding-left:18px;line-height:1.7">
+        <li>a board link from your teacher — open that link instead of this page, or</li>
+        <li>a <code>data.json</code> file published next to this page.</li>
+      </ul></div></div>`;
+    return;
+  }
+  renderAll();
+  try{ localStorage.setItem("pickleboard-last", location.hash||""); }catch(e){}
+  if(src==="file"){
+    setInterval(async()=>{
+      try{
+        const r=await fetch("data.json?t="+Date.now(),{cache:"no-store"});
+        if(!r.ok) return;
+        const j=await r.json();
+        const next=decode(j.payload);
+        if(JSON.stringify(next)!==JSON.stringify(D)){ D=next; renderAll(); }
+      }catch(e){}
+    },30000);
+  }
+})();
+</script>
+</body>
+</html>
