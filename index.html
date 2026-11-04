@@ -147,6 +147,31 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .bar{height:6px;border-radius:999px;background:var(--panel-2);overflow:hidden;min-width:60px}
 .bar i{display:block;height:100%;background:var(--accent)}
 
+/* quick score entry */
+.qs{display:flex;gap:6px;align-items:center;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+.qs input{width:84px;text-align:center;font-variant-numeric:tabular-nums;font-weight:650;letter-spacing:.02em}
+.qs input::placeholder{font-weight:500;color:var(--ink-3);letter-spacing:0}
+.qs .hint{font-size:11.5px;color:var(--ink-3)}
+.qs-res{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);font-size:12.5px}
+.won{font-size:10.5px;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink)}
+.lost{font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:999px;background:var(--panel-2);color:var(--ink-3)}
+/* rankings */
+.podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
+.lead{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+.lead:last-child{border-bottom:0}
+.lead .nm{min-width:0;line-height:1.3}
+.lead .nm b{display:block;font-size:14px}
+.lead .nm span{font-size:11.5px;color:var(--ink-3)}
+.lead .big{margin-left:auto;font-weight:750;font-variant-numeric:tabular-nums;font-size:19px;text-align:right}
+.medal{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:800;flex:none;
+  background:var(--panel-2);color:var(--ink-3)}
+.medal.m1{background:var(--accent);color:var(--accent-ink)}
+.medal.m2{background:color-mix(in srgb,var(--accent) 34%,var(--panel-2));color:var(--ink)}
+.medal.m3{background:color-mix(in srgb,var(--accent) 17%,var(--panel-2));color:var(--ink)}
+.form{display:inline-flex;gap:3px}
+.form i{width:17px;height:17px;border-radius:5px;display:grid;place-items:center;font-size:9.5px;font-weight:800;font-style:normal;
+  background:var(--panel-2);color:var(--ink-3)}
+.form i.w{background:var(--accent);color:var(--accent-ink)}
 @media (max-width:620px){
   .topbar-in{padding:8px 12px;gap:8px}
   .brand span{display:none}
@@ -173,7 +198,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <button role="tab" data-view="teams" aria-selected="true">Teams</button>
       <button role="tab" data-view="schedule" aria-selected="false">Schedule</button>
       <button role="tab" data-view="courts" aria-selected="false">Courts</button>
-      <button role="tab" data-view="standings" aria-selected="false">Standings</button>
+      <button role="tab" data-view="standings" aria-selected="false">Rankings</button>
       <button role="tab" data-view="players" aria-selected="false">Players</button>
       <button role="tab" data-view="setup" aria-selected="false">Setup</button>
     </nav>
@@ -264,9 +289,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 
 <!-- ================= STANDINGS ================= -->
 <section class="view" id="view-standings">
+  <div id="podium" class="podium"></div>
   <div class="card">
     <div class="card-h">
-      <h2>Standings</h2>
+      <h2>Full ranking</h2>
       <div class="seg no-print" id="standSeg">
         <button data-s="team" aria-selected="true">By team</button>
         <button data-s="player" aria-selected="false">By student</button>
@@ -830,6 +856,20 @@ function renderRotation(){
       ${r.benched.length?`<div class="banner" style="margin-top:12px">These students are not in any match: ${r.benched.map(esc).join(", ")}. Assign them to a team, then regenerate.</div>`:""}
     </div></div>`;
 }
+function scoreBox(g){
+  if(g.status==="final"){
+    const win=g.sa>g.sb?g.teamA:g.teamB, hi=Math.max(g.sa,g.sb), lo=Math.min(g.sa,g.sb);
+    return `<div class="qs-res"><span class="won">WIN</span>
+      <span><b>${esc(teamName(win))}</b> ${hi}–${lo}</span>
+      <button class="btn sm ghost no-print spacer" data-qedit="${g.id}">change</button></div>`;
+  }
+  return `<div class="qs no-print">
+    <input type="text" inputmode="numeric" autocomplete="off" placeholder="11-2"
+           data-qs="${g.id}" aria-label="Final score, ${esc(teamName(g.teamA))} first">
+    <button class="btn sm primary" data-qsave="${g.id}">Save</button>
+    <span class="hint">${esc(teamName(g.teamA)).slice(0,10)} first</span>
+  </div>`;
+}
 function matchCard(g,editable){
   const a=g.a.map(id=>shortName(P(id))).join(" / ")||"—";
   const b=g.b.map(id=>shortName(P(id))).join(" / ")||"—";
@@ -852,7 +892,38 @@ function matchCard(g,editable){
       <div><div class="tname" style="color:${teamColor(g.teamB)}">${esc(teamName(g.teamB))}</div><div class="names">${esc(b)}</div></div>
       <div class="sc">${g.status==="scheduled"?"–":g.sb}</div>
     </div>
+    ${scoreBox(g)}
   </div>`;
+}
+/* "11-2", "11 2", "11:2", "11–2" all parse. */
+function parseScore(txt){
+  const m=String(txt||"").trim().match(/^(\d{1,2})\s*[-–:,.\s]\s*(\d{1,2})$/);
+  return m ? [+m[1], +m[2]] : null;
+}
+async function quickSave(id, el){
+  const g=S.games.find(x=>x.id===id); if(!g) return;
+  const inp = el || document.querySelector(`[data-qs="${id}"]`);
+  const v=parseScore(inp && inp.value);
+  if(!v) return toast("Type the score like 11-2");
+  const [a,b]=v;
+  if(a===b) return toast("A doubles game cannot end level");
+  const hi=Math.max(a,b), lo=Math.min(a,b), {pointsTo,winBy2,hardCap}=S.meta;
+  const done = hi>=hardCap || (hi>=pointsTo && (!winBy2 || hi-lo>=2));
+  if(!done && !(await ask(`${a}–${b} does not finish a game to ${pointsTo}${winBy2?" (win by 2)":""}. Record it anyway?`,"Record"))) return;
+  g.sa=a; g.sb=b; g.status="final"; g.log=[];
+  if(!g.startedAt) g.startedAt=Date.now();
+  g.endedAt=Date.now();
+  save(); renderAll();
+  toast(`${teamName(a>b?g.teamA:g.teamB)} win ${hi}–${lo}`);
+  focusNextScore();
+}
+/* Jump to the next unplayed match so a whole session can be typed in one go. */
+function focusNextScore(){
+  const view=$(".view.active"); if(!view) return;
+  const next=view.querySelector("[data-qs]");
+  if(!next) return;
+  try{ next.focus({preventScroll:true}); }catch(e){ try{ next.focus(); }catch(e2){} }
+  try{ if(next.scrollIntoView) next.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){}
 }
 function sessionHTML(sess,editable){
   if(sess===0){
@@ -1012,13 +1083,17 @@ function computeStats(){
   S.teams.forEach(t=>TS[t.id]={id:t.id,name:t.name,color:t.color,gp:0,w:0,l:0,pf:0,pa:0,pts:0,tw:0,tl:0,td:0});
   S.players.forEach(p=>PS[p.id]={id:p.id,gp:0,w:0,l:0,pf:0,pa:0});
   const ties={};
-  S.games.filter(g=>g.status==="final").forEach(g=>{
+  S.teams.forEach(t=>TS[t.id].form=[]);
+  S.players.forEach(p=>PS[p.id].form=[]);
+  S.games.filter(g=>g.status==="final")
+   .sort((x,y)=>(x.session||99)-(y.session||99)||(x.slot||0)-(y.slot||0)||(x.court||0)-(y.court||0))
+   .forEach(g=>{
     const aw=g.sa>g.sb;
     const A=TS[g.teamA], B=TS[g.teamB];
-    if(A){A.gp++;A.pf+=g.sa;A.pa+=g.sb;aw?(A.w++,A.pts+=S.meta.winPts):A.l++;}
-    if(B){B.gp++;B.pf+=g.sb;B.pa+=g.sa;aw?B.l++:(B.w++,B.pts+=S.meta.winPts);}
-    g.a.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sa;s.pa+=g.sb;aw?s.w++:s.l++;});
-    g.b.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sb;s.pa+=g.sa;aw?s.l++:s.w++;});
+    if(A){A.gp++;A.pf+=g.sa;A.pa+=g.sb;aw?(A.w++,A.pts+=S.meta.winPts):A.l++;A.form.push(aw);}
+    if(B){B.gp++;B.pf+=g.sb;B.pa+=g.sa;aw?B.l++:(B.w++,B.pts+=S.meta.winPts);B.form.push(!aw);}
+    g.a.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sa;s.pa+=g.sb;aw?s.w++:s.l++;s.form.push(aw);});
+    g.b.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sb;s.pa+=g.sa;aw?s.l++:s.w++;s.form.push(!aw);});
     const t=ties[g.tieId]||(ties[g.tieId]={a:g.teamA,b:g.teamB,aw:0,bw:0,n:0});
     t.n++; aw?t.aw++:t.bw++;
   });
@@ -1030,38 +1105,74 @@ function computeStats(){
   });
   return {TS,PS};
 }
+const formHTML=f=>`<span class="form">${(f||[]).slice(-5).map(w=>`<i class="${w?"w":""}">${w?"W":"L"}</i>`).join("")}</span>`;
+const medal=i=>`<span class="medal ${i<3?"m"+(i+1):""}">${i+1}</span>`;
+
+function renderPodium(){
+  const box=$("#podium"); if(!box) return;
+  const {TS,PS}=computeStats();
+  const teams=Object.values(TS).filter(t=>t.gp)
+    .sort((a,b)=>b.pts-a.pts||(b.pf-b.pa)-(a.pf-a.pa)||b.pf-a.pf).slice(0,3);
+  const players=S.players.map(p=>({p,s:PS[p.id]})).filter(x=>x.s.gp)
+    .sort((a,b)=>b.s.w-a.s.w||(b.s.pf-b.s.pa)-(a.s.pf-a.s.pa)||b.s.gp-a.s.gp).slice(0,3);
+  if(!teams.length){ box.innerHTML=""; return; }
+  box.innerHTML=`
+    <div class="card" style="margin:0">
+      <div class="card-h"><h2>Team leaders</h2><span class="pill">by league points</span></div>
+      <div class="card-b" style="padding-top:4px;padding-bottom:6px">
+        ${teams.map((t,i)=>`<div class="lead">${medal(i)}
+          <span class="dot" style="background:${t.color}"></span>
+          <div class="nm"><b>${esc(t.name)}</b>
+            <span>${t.w}W–${t.l}L · ${t.pf-t.pa>0?"+":""}${t.pf-t.pa} diff · ${formHTML(t.form)}</span></div>
+          <div class="big">${t.pts}</div></div>`).join("")}
+      </div></div>
+    <div class="card" style="margin:0">
+      <div class="card-h"><h2>Student leaders</h2><span class="pill">by games won</span></div>
+      <div class="card-b" style="padding-top:4px;padding-bottom:6px">
+        ${players.map((x,i)=>`<div class="lead">${medal(i)}
+          ${x.p.teamId?`<span class="dot" style="background:${teamColor(x.p.teamId)}"></span>`:""}
+          <div class="nm"><b>${esc(fullName(x.p))}</b>
+            <span>${esc(teamName(x.p.teamId))} · ${x.s.gp} played · ${formHTML(x.s.form)}</span></div>
+          <div class="big">${x.s.w}<span class="small muted" style="font-weight:600">W</span></div></div>`).join("")}
+      </div></div>`;
+}
+
 function renderStandings(){
+  renderPodium();
   const {TS,PS}=computeStats();
   const mode=S.ui.stand||"team";
   $$("#standSeg button").forEach(b=>b.setAttribute("aria-selected",b.dataset.s===mode));
   if(mode==="team"){
     const rows=Object.values(TS).sort((x,y)=> y.pts-x.pts || (y.pf-y.pa)-(x.pf-x.pa) || y.pf-x.pf);
     $("#standBody").innerHTML = rows.length? `<table>
-      <thead><tr><th class="num">#</th><th>Team</th><th class="num">Ties W-L-D</th><th class="num">GP</th><th class="num">W</th><th class="num">L</th>
-      <th class="num">PF</th><th class="num">PA</th><th class="num">Diff</th><th class="num">Pts</th><th>Win %</th></tr></thead>
+      <thead><tr><th class="num">Rank</th><th>Team</th><th class="num">Ties W-L-D</th><th class="num">GP</th><th class="num">W</th><th class="num">L</th>
+      <th class="num">PF</th><th class="num">PA</th><th class="num">Diff</th><th class="num">Pts</th><th>Form</th><th>Win %</th></tr></thead>
       <tbody>${rows.map((r,i)=>{
         const d=r.pf-r.pa, wp=r.gp?Math.round(r.w/r.gp*100):0;
-        return `<tr><td class="num muted">${i+1}</td>
+        return `<tr><td class="num">${medal(i)}</td>
           <td><span class="dot" style="background:${r.color};margin-right:7px"></span><b>${esc(r.name)}</b></td>
           <td class="num">${r.tw}-${r.tl}-${r.td}</td>
           <td class="num">${r.gp}</td><td class="num">${r.w}</td><td class="num">${r.l}</td>
           <td class="num">${r.pf}</td><td class="num">${r.pa}</td><td class="num">${d>0?"+":""}${d}</td>
           <td class="num"><b>${r.pts}</b></td>
+          <td>${formHTML(r.form)}</td>
           <td><div class="row" style="gap:7px"><div class="bar" style="flex:1"><i style="width:${wp}%"></i></div><span class="small muted">${wp}%</span></div></td></tr>`;
       }).join("")}</tbody></table>` : `<div class="empty">No results yet.</div>`;
   } else {
-    const rows=S.players.map(p=>({p,s:PS[p.id]})).sort((x,y)=> y.s.w-x.s.w || (y.s.pf-y.s.pa)-(x.s.pf-x.s.pa) || x.p.last.localeCompare(y.p.last));
+    const rows=S.players.map(p=>({p,s:PS[p.id]}))
+      .sort((x,y)=> (y.s.gp>0)-(x.s.gp>0) || y.s.w-x.s.w || (y.s.pf-y.s.pa)-(x.s.pf-x.s.pa) || x.p.last.localeCompare(y.p.last));
     $("#standBody").innerHTML = `<table>
-      <thead><tr><th class="num">#</th><th>Student</th><th>Team</th><th class="num">GP</th><th class="num">W</th><th class="num">L</th>
-      <th class="num">PF</th><th class="num">PA</th><th class="num">Diff</th><th class="num">PPG</th><th>Win %</th></tr></thead>
+      <thead><tr><th class="num">Rank</th><th>Student</th><th>Team</th><th class="num">GP</th><th class="num">W</th><th class="num">L</th>
+      <th class="num">PF</th><th class="num">PA</th><th class="num">Diff</th><th class="num">PPG</th><th>Form</th><th>Win %</th></tr></thead>
       <tbody>${rows.map((r,i)=>{
         const s=r.s,d=s.pf-s.pa,wp=s.gp?Math.round(s.w/s.gp*100):0;
-        return `<tr><td class="num muted">${i+1}</td>
+        return `<tr><td class="num">${s.gp?medal(i):`<span class="muted">–</span>`}</td>
           <td><b>${esc(r.p.last)}</b>, ${esc(r.p.given)}</td>
           <td>${r.p.teamId?`<span class="dot" style="background:${teamColor(r.p.teamId)};margin-right:6px"></span>${esc(teamName(r.p.teamId))}`:`<span class="muted">—</span>`}</td>
           <td class="num">${s.gp}</td><td class="num">${s.w}</td><td class="num">${s.l}</td>
           <td class="num">${s.pf}</td><td class="num">${s.pa}</td><td class="num">${d>0?"+":""}${d}</td>
           <td class="num">${s.gp?(s.pf/s.gp).toFixed(1):"–"}</td>
+          <td>${formHTML(s.form)}</td>
           <td><div class="row" style="gap:7px"><div class="bar" style="flex:1"><i style="width:${wp}%"></i></div><span class="small muted">${wp}%</span></div></td></tr>`;
       }).join("")}</tbody></table>`;
   }
@@ -1260,6 +1371,13 @@ document.addEventListener("click",e=>{
   const sess=t.closest("[data-sess]");
   if(sess){ S.ui.session=+sess.dataset.sess; save(); renderSchedule(); renderCourts(); return; }
 
+  const qsv=t.closest("[data-qsave]"); if(qsv){ e.stopPropagation(); return quickSave(qsv.dataset.qsave); }
+  const qed=t.closest("[data-qedit]");
+  if(qed){ e.stopPropagation();
+    const g=S.games.find(x=>x.id===qed.dataset.qedit); if(!g) return;
+    Object.assign(g,{sa:0,sb:0,status:"scheduled",log:[],switched:false,server:"A",startedAt:null,endedAt:null});
+    save(); renderAll(); return; }
+  if(t.closest(".qs")) { e.stopPropagation(); return; }
   const ed=t.closest("[data-edit]"); if(ed){ e.stopPropagation(); return openEdit(ed.dataset.edit); }
   const op=t.closest("[data-open]"); if(op) return openScorer(op.dataset.open);
 
@@ -1306,6 +1424,10 @@ document.addEventListener("click",e=>{
   if(t.id==="askOverlay"){ const n=$("#askNo"); if(n) n.click(); }
 });
 
+document.addEventListener("keydown",e=>{
+  const inp=e.target.closest&&e.target.closest("[data-qs]");
+  if(inp && e.key==="Enter"){ e.preventDefault(); quickSave(inp.dataset.qs, inp); }
+},true);
 document.addEventListener("change",e=>{
   const as=e.target.closest("[data-assign]");
   if(as){ const p=P(as.dataset.assign); if(p){ p.teamId=as.value||null; save(); renderTeams(); renderSchedule(); renderStandings(); renderPlayers(); } }
