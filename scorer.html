@@ -4,30 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pickleball Scorer Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <meta name="description" content="Scoring and refereeing sheet for a team on duty.">
 <style>
+/* Layout: a courtside instrument panel — translucent strata over a faint
+   court-line grid, with electric accents held back for live state and rank. */
 :root{
-  --bg:#f6f7f5; --panel:#fff; --panel-2:#f0f2ee; --line:#dfe3da;
-  --ink:#1b2318; --ink-2:#5c6554; --ink-3:#8a9280;
-  --accent:#4f7a28; --accent-ink:#fff; --accent-soft:#e8f2da;
-  --warn:#b4531a; --warn-soft:#fdeadd; --danger:#a32a2a;
-  --shadow:0 1px 2px rgba(20,30,10,.06),0 8px 24px rgba(20,30,10,.06);
+  --bg:#eef1ed; --bg-2:#e5eae4; --grid:rgba(20,40,26,.055);
+  --panel:#ffffff; --panel-2:#f1f4ef; --glass:rgba(255,255,255,.74);
+  --line:#d6ddd2; --line-2:#c0ccb9;
+  --ink:#111a13; --ink-2:#4c5a4c; --ink-3:#7c8a7b;
+  --accent:#2f7a1f; --accent-ink:#ffffff; --accent-soft:#e2f2d8; --glow:rgba(47,122,31,.22);
+  --live:#0d8a80; --warn:#a2560f; --warn-soft:#fdeeda; --danger:#a32a2a;
+  --r:11px; --r-sm:8px;
+  --shadow:0 1px 1px rgba(16,30,18,.04), 0 10px 28px rgba(16,30,18,.07);
+  --f-display:"Rajdhani",ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  --f-body:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#13170f; --panel:#1b2016; --panel-2:#222819; --line:#333c27;
-  --ink:#eef2e6; --ink-2:#aab59b; --ink-3:#7d876e;
-  --accent:#9ccb62; --accent-ink:#14200a; --accent-soft:#26331a;
-  --warn:#e2a06a; --warn-soft:#3a2a18; --danger:#e07a7a;
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  --bg:#080c0a; --bg-2:#0c120e; --grid:rgba(142,240,74,.05);
+  --panel:#121a15; --panel-2:#18231b; --glass:rgba(18,26,21,.80);
+  --line:#243227; --line-2:#35472f;
+  --ink:#e9f1e5; --ink-2:#9fb09c; --ink-3:#6e8070;
+  --accent:#8ef04a; --accent-ink:#07160a; --accent-soft:#1c2c15; --glow:rgba(142,240,74,.28);
+  --live:#2ae0c8; --warn:#ffab49; --warn-soft:#3a2a14; --danger:#ff7a7a;
+  --shadow:0 1px 1px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.45);
   color-scheme:dark;
 } }
 :root[data-theme="dark"]{
-  --bg:#13170f; --panel:#1b2016; --panel-2:#222819; --line:#333c27;
-  --ink:#eef2e6; --ink-2:#aab59b; --ink-3:#7d876e;
-  --accent:#9ccb62; --accent-ink:#14200a; --accent-soft:#26331a;
-  --warn:#e2a06a; --warn-soft:#3a2a18; --danger:#e07a7a;
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  --bg:#080c0a; --bg-2:#0c120e; --grid:rgba(142,240,74,.05);
+  --panel:#121a15; --panel-2:#18231b; --glass:rgba(18,26,21,.80);
+  --line:#243227; --line-2:#35472f;
+  --ink:#e9f1e5; --ink-2:#9fb09c; --ink-3:#6e8070;
+  --accent:#8ef04a; --accent-ink:#07160a; --accent-soft:#1c2c15; --glow:rgba(142,240,74,.28);
+  --live:#2ae0c8; --warn:#ffab49; --warn-soft:#3a2a14; --danger:#ff7a7a;
+  --shadow:0 1px 1px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.45);
   color-scheme:dark;
 }
 *{box-sizing:border-box} html,body{margin:0;padding:0}
@@ -74,6 +89,32 @@ main{max-width:760px;margin:0 auto;padding:18px 16px 80px}
   background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px;color:inherit;resize:vertical}
 .banner{border:1px solid var(--line);background:var(--warn-soft);color:var(--warn);padding:11px 14px;border-radius:12px;font-size:13px;font-weight:550}
 @media (max-width:620px){ main{padding:14px 12px 80px} }
+
+/* --- hi-tech surface treatment --- */
+body{background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:52px 52px,52px 52px;background-attachment:fixed;
+  font-family:var(--f-body)}
+h1,h2,h3{font-family:var(--f-display);letter-spacing:.005em}
+.topbar{background:var(--glass);backdrop-filter:saturate(140%) blur(14px);
+  -webkit-backdrop-filter:saturate(140%) blur(14px)}
+.card-h{background:linear-gradient(180deg,var(--panel-2),transparent);position:relative}
+.card-h::after{content:"";position:absolute;left:0;bottom:-1px;width:64px;height:2px;background:var(--accent)}
+.pill{font-family:var(--f-display);letter-spacing:.06em;font-weight:600;border:1px solid var(--line)}
+.pill.live{border-color:color-mix(in srgb,var(--live) 34%,transparent)}
+.pill.final,.pill.done{border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.btn{font-family:var(--f-display);letter-spacing:.03em;font-weight:600}
+.btn.primary{box-shadow:0 0 0 1px var(--glow),0 3px 14px var(--glow)}
+th{font-family:var(--f-display);letter-spacing:.11em;font-weight:600}
+td.num,th.num,.num,.sc,.big,.fin,.gcount{font-variant-numeric:tabular-nums}
+td.num,.sc,.fin,.big{font-family:var(--f-mono)}
+.brand b,.topbar b{font-family:var(--f-display);letter-spacing:.01em}
+.side .tname,.court-h,.court-tag{font-family:var(--f-display);letter-spacing:.09em}
+.bar i{background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 60%,var(--live)));
+  box-shadow:0 0 10px var(--glow)}
+.medal.m1,.rank.top{box-shadow:0 0 16px var(--glow)}
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
 </style>
 </head>
 <body>

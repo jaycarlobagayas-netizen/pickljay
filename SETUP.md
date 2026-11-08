@@ -157,6 +157,16 @@ Your site: **https://jaycarlobagayas-netizen.github.io/pickljay/**
    **Turn on live sync**. The pill at the top turns **● live**.
 6. Click **Copy class link**. That is the one link for the class.
 
+### Show the class the QR code
+
+**Setup → Live sync → Show QR.** A full-screen code appears with the class
+code under it. Project it, or hold your phone up — students scan, land on the
+sign-in page with the class code already filled, and only need the student
+password.
+
+The QR encodes the same address as *Copy class link*, so it stays correct for
+the whole tournament. Regenerate it only if you change the class code.
+
 ### Check it actually works before class
 
 On your phone, open the class link, choose **I'm a student**, enter the student
@@ -182,6 +192,7 @@ how many people are signed into one account.
 
 | You want to | Do this |
 |---|---|
+| Show the join QR | **Setup → Live sync → Show QR** |
 | Mark who is absent | **Attendance** tab, tap ✕ beside a name |
 | Enter a score | **Schedule** tab, type both numbers, *Save score* |
 | Score rally by rally | Tap the match card itself |
