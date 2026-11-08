@@ -127,34 +127,9 @@
     });
   };
 
-  /* ---------- results sent in by scoring teams ---------- */
-  function rid(slug, gameIdx) { return slug + "__" + gameIdx; }
-
-  PJ.postResult = function (slug, gameIdx, teamIdx, sa, sb) {
-    var u = PJ.currentUser();
-    if (!u) return Promise.reject(new Error("not signed in"));
-    return PJ._dbf.collection("results").doc(rid(slug, gameIdx)).set({
-      slug: slug, gameIdx: gameIdx, teamIdx: teamIdx,
-      sa: sa, sb: sb, by: u.uid,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-  };
-  PJ.watchResults = function (slug, cb, onErr) {
-    return PJ._dbf.collection("results").where("slug", "==", slug)
-      .onSnapshot(function (snap) {
-        var out = [];
-        snap.forEach(function (d) { out.push(d.data()); });
-        out.sort(function (a, b) { return (a.gameIdx || 0) - (b.gameIdx || 0); });
-        cb(out);
-      }, function (e) { if (onErr) onErr(e); });
-  };
-  PJ.clearResults = function (slug, gameIdxs) {
-    var batch = PJ._dbf.batch();
-    (gameIdxs || []).forEach(function (g) {
-      batch.delete(PJ._dbf.collection("results").doc(rid(slug, g)));
-    });
-    return batch.commit();
-  };
+  /* Students have no write path at all. The only writer is the teacher,
+     through saveTournament / saveAdminState above, and the Firestore rules
+     refuse those to anyone but the admin address. */
 
   /* ---------- page guard ---------- */
   /* Sends anyone without the right role back to the sign-in page. */

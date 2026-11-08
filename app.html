@@ -96,6 +96,9 @@ button{cursor:pointer}
 .tabs::-webkit-scrollbar{height:0}
 .tabs button{border:0;background:transparent;color:var(--ink-2);padding:7px 13px;border-radius:7px;
   font-family:var(--f-display);font-size:14px;font-weight:600;letter-spacing:.04em;white-space:nowrap}
+.tabs button{display:inline-flex;align-items:center;gap:6px}
+.ico{flex:none;opacity:.85}
+.tabs button[aria-selected="true"] .ico{opacity:1;color:var(--accent)}
 .tabs button[aria-selected="true"]{background:var(--panel);color:var(--ink);
   box-shadow:0 1px 2px rgba(0,0,0,.14), inset 0 0 0 1px var(--line-2)}
 .icon-btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;
@@ -333,15 +336,16 @@ td.num,.sc{font-family:var(--f-mono)}
       <div><b id="brandTitle">PED013 Pickleball</b><span id="brandSub">Class Tournament Manager</span></div>
     </div>
     <nav class="tabs" role="tablist" id="tabs">
-      <button role="tab" data-view="teams" aria-selected="true">Teams</button>
-      <button role="tab" data-view="attend" aria-selected="false">Attendance</button>
-      <button role="tab" data-view="duties" aria-selected="false">Duties</button>
-      <button role="tab" data-view="schedule" aria-selected="false">Schedule</button>
-      <button role="tab" data-view="courts" aria-selected="false">Courts</button>
-      <button role="tab" data-view="standings" aria-selected="false">Rankings</button>
-      <button role="tab" data-view="history" aria-selected="false">History</button>
-      <button role="tab" data-view="players" aria-selected="false">Players</button>
-      <button role="tab" data-view="setup" aria-selected="false">Setup</button>
+      <button role="tab" data-view="teams" aria-selected="true" data-ico="teams">Teams</button>
+      <button role="tab" data-view="attend" aria-selected="false" data-ico="attend">Attendance</button>
+      <button role="tab" data-view="duties" aria-selected="false" data-ico="whistle">Duties</button>
+      <button role="tab" data-view="schedule" aria-selected="false" data-ico="calendar">Schedule</button>
+      <button role="tab" data-view="courts" aria-selected="false" data-ico="court">Courts</button>
+      <button role="tab" data-view="standings" aria-selected="false" data-ico="trophy">Rankings</button>
+      <button role="tab" data-view="mvp" aria-selected="false" data-ico="star">MVP</button>
+      <button role="tab" data-view="history" aria-selected="false" data-ico="clock">History</button>
+      <button role="tab" data-view="players" aria-selected="false" data-ico="user">Players</button>
+      <button role="tab" data-view="setup" aria-selected="false" data-ico="gear">Setup</button>
     </nav>
     <div class="tb-right no-print">
       <span class="pill" id="livePill" title="Live sync status" style="cursor:pointer">○ offline</span>
@@ -438,26 +442,9 @@ td.num,.sc{font-family:var(--f-mono)}
   </div>
 
   <div class="card">
-    <div class="card-h"><h2>Scorer links</h2><span class="pill">one per team</span></div>
+    <div class="card-h"><h2>How results reach you</h2></div>
     <div class="card-b">
-      <p class="small muted" style="margin:0 0 12px" id="dutyLinkNote"></p>
-      <div id="dutyLinks" class="team-grid"></div>
-      <div id="dutyLinkOut" class="small" style="margin-top:12px"></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-h"><h2>Results waiting</h2><span class="pill" id="pendPill"></span></div>
-    <div class="card-b"><div id="pendBox"></div></div>
-  </div>
-
-  <div class="card">
-    <div class="card-h"><h2>Results by code</h2><span class="pill">offline fallback</span></div>
-    <div class="card-b">
-      <p class="small muted" style="margin:0 0 10px">If a scoring team had no signal, they can read you a code instead. You can change anything it records afterwards.</p>
-      <textarea id="impBox" placeholder="R2.xxxxxx.&hellip;" style="width:100%;height:68px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px"></textarea>
-      <div class="row" style="margin-top:9px"><button class="btn primary" id="impApply">Apply results</button>
-        <span class="small muted" id="impOut"></span></div>
+      <p class="small muted" style="margin:0">The team on duty referees and writes the score on paper. You enter it yourself from <b>Schedule</b> or <b>Courts</b>. Student accounts can only read the tournament — there is no way for a student to record, change or submit a score.</p>
     </div>
   </div>
 </section>
@@ -502,6 +489,18 @@ td.num,.sc{font-family:var(--f-mono)}
 
 <!-- ================= STANDINGS ================= -->
 <section class="view" id="view-standings">
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h"><h2>Team progress</h2>
+      <span class="pill" id="progPill"></span>
+      <div class="spacer row no-print">
+        <div class="seg" id="progSeg">
+          <button data-pm="pts" aria-selected="true">League points</button>
+          <button data-pm="wins" aria-selected="false">Games won</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-b"><div id="progBox"></div></div>
+  </div>
   <div id="podium" class="podium"></div>
   <div class="card">
     <div class="card-h">
@@ -530,6 +529,24 @@ td.num,.sc{font-family:var(--f-mono)}
       </div>
     </div>
     <div class="scroll" style="max-height:640px"><div id="histBody"></div></div>
+  </div>
+</section>
+
+<!-- ================= MVP ================= -->
+<section class="view" id="view-mvp">
+  <div id="mvpTop" class="podium"></div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h"><h2>Best of each team</h2><span class="pill">by win rate</span></div>
+    <div class="card-b"><div id="mvpTeams" class="team-grid"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-h"><h2>Every student by win rate</h2>
+      <div class="spacer row no-print">
+        <label class="field" style="flex-direction:row;align-items:center;gap:6px">
+          Minimum games <input type="number" id="mvpMin" min="1" max="12" value="3"></label>
+      </div>
+    </div>
+    <div class="scroll"><div id="mvpBody"></div></div>
   </div>
 </section>
 
@@ -859,19 +876,16 @@ async function enableLive(){
   S.cloud.on=true;
   try{ localStorage.setItem(KEY,JSON.stringify(S)); localStorage.setItem("pj-slug",S.cloud.slug); }catch(e){}
   await pushNow();
-  watchResults();
   renderAll();
   toast(PUSH.err?"Could not reach the server":"Live sync on");
 }
 function disableLive(){
   S.cloud.on=false; clearTimeout(PUSH_T);
-  if(UNWATCH){ try{UNWATCH();}catch(e){} UNWATCH=null; }
   try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
   renderAll(); toast("Live sync paused");
 }
 const siteBase=()=> location.href.replace(/[^/]*$/,"");
 const liveBoardLink=()=> S.cloud.slug ? siteBase()+"index.html#"+S.cloud.slug : null;
-const liveScorerLink=i=> S.cloud.slug ? siteBase()+"scorer.html#t="+i : null;
 
 const P = id => S.players.find(p=>p.id===id);
 const T = id => S.teams.find(t=>t.id===id);
@@ -984,6 +998,26 @@ function teamRounds(ids){
 }
 const tiesPerTeam = ()=> Math.max(0, S.teams.length-1);
 
+/* Draw a team's whole set of pairings several times and keep the most even
+   one. A single draw is already correct; the restarts only even out how many
+   games each player gets, which the circle structure can otherwise skew. */
+function planTeamPairs(teamId, nTies, g, allowRepeats){
+  const mem=S.players.filter(p=>p.teamId===teamId).map(p=>p.id);
+  let best=null, bestScore=Infinity;
+  for(let attempt=0; attempt<40; attempt++){
+    const plan=planOnce(teamId,nTies,g,allowRepeats);
+    const n={}; mem.forEach(id=>n[id]=0);
+    plan.pairs.forEach(tie=>tie.forEach(pr=>pr.forEach(id=>{ if(n[id]!=null) n[id]++; })));
+    const vals=Object.values(n);
+    const spread=vals.length?Math.max(...vals)-Math.min(...vals):0;
+    const score=plan.repeats*1000 + spread*10
+              + vals.reduce((a,v)=>a+v*v,0)/Math.max(1,vals.length);
+    if(score<bestScore){ bestScore=score; best=plan; }
+    if(plan.repeats===0 && spread<=1) break;      // already optimal
+  }
+  return best;
+}
+
 /* Can every match use a partnership never used before? */
 function pairingCheck(){
   const nT=tiesPerTeam(), g=S.meta.gamesPerTie;
@@ -1020,13 +1054,17 @@ function suggestFix(){
   }
   return out;
 }
-function planTeamPairs(teamId, nTies, g, allowRepeats){
+function planOnce(teamId, nTies, g, allowRepeats){
   const mem=S.players.filter(p=>p.teamId===teamId).map(p=>p.id);
   const out={pairs:[], repeats:0, distinct:0};
   if(mem.length<2){ for(let t=0;t<nTies;t++) out.pairs.push([]); return out; }
   const rounds=teamRounds(mem);
   const used=rounds.map(r=>r.map(()=>false));
-  const count={}, play={}; mem.forEach(id=>play[id]=0);
+  /* which round each tie draws from; shuffled so restarts explore
+     different benching patterns */
+  const order=shuffle(rounds.map((_,i)=>i));
+  const count={}, play={}, sat={};
+  mem.forEach(id=>{ play[id]=0; sat[id]=0; });
   const take=p=>{
     const k=pk(p[0],p[1]); count[k]=(count[k]||0)+1;
     count[k]===1 ? out.distinct++ : out.repeats++;
@@ -1034,24 +1072,32 @@ function planTeamPairs(teamId, nTies, g, allowRepeats){
   };
   for(let t=0;t<nTies;t++){
     const got=[], inTie=new Set();
-    /* Within a round every pair is disjoint, so taking the pairs whose players
-       have played least keeps game counts level across the team. */
-    const sweep=disjointOnly=>{
-      for(let dd=0; dd<rounds.length && got.length<g; dd++){
-        const r=(t+dd)%rounds.length;
-        const cand=rounds[r].map((p,i)=>({p,i}))
-          .filter(x=>!used[r][x.i])
-          .map(x=>({...x, load:play[x.p[0]]+play[x.p[1]], jit:Math.random()}))
-          .sort((x,y)=>x.load-y.load||x.jit-y.jit);
-        for(const c of cand){
-          if(got.length>=g) break;
-          if(disjointOnly && (inTie.has(c.p[0])||inTie.has(c.p[1]))) continue;
-          used[r][c.i]=true; got.push(c.p); take(c.p);
-          inTie.add(c.p[0]); inTie.add(c.p[1]);
-        }
+    /* Each tie draws from its own round of the circle. Pairs inside a round
+       share no players, so a student can never appear twice in one tie, and
+       no partnership is reused because rounds are consumed once. Within the
+       round, take the pairs whose busiest player is least busy. */
+    const takeFrom=r=>{
+      const cands=rounds[r].map((pr,i)=>({pr,i}))
+        .filter(x=>!used[r][x.i] && !inTie.has(x.pr[0]) && !inTie.has(x.pr[1]))
+        .map(x=>({pr:x.pr,i:x.i,
+                  satHi:Math.max(sat[x.pr[0]],sat[x.pr[1]]),
+                  satSum:sat[x.pr[0]]+sat[x.pr[1]],
+                  load:play[x.pr[0]]+play[x.pr[1]],
+                  jit:Math.random()}))
+        /* whoever has sat out most plays first; the pair left over sits */
+        .sort((x,y)=>y.satHi-x.satHi||y.satSum-x.satSum||x.load-y.load||x.jit-y.jit);
+      for(const c of cands){
+        if(got.length>=g) break;
+        used[r][c.i]=true; got.push(c.pr); take(c.pr);
+        inTie.add(c.pr[0]); inTie.add(c.pr[1]);
       }
     };
-    sweep(true); sweep(false);
+    const sweep=()=>{
+      for(let dd=0; dd<rounds.length && got.length<g; dd++)
+        takeFrom(order[(t+dd)%order.length]);
+    };
+    sweep();
+    mem.forEach(id=>{ if(!inTie.has(id)) sat[id]++; });
     if(got.length<g && allowRepeats){
       const all=[]; rounds.forEach(r=>r.forEach(p=>all.push(p)));
       while(got.length<g){
@@ -1624,13 +1670,6 @@ function renderDuties(){
   const cur=S.ui.dutySession||1;
   sel.innerHTML=Array.from({length:S.meta.sessions},(_,i)=>i+1)
     .map(n=>`<option value="${n}" ${n===cur?"selected":""}>Session ${n}</option>`).join("");
-  const live=S.cloud&&S.cloud.on&&S.cloud.slug;
-  const note=$("#dutyLinkNote");
-  if(note) note.innerHTML = live
-    ? "Send a team their link and they get a scoring page showing only the matches they referee. Scores they save arrive in <b>Results waiting</b> below within seconds."
-    : "Send a team their link and they get a scoring page showing only the matches they referee. Without live sync they finish by reading you a short code. <b>Turn on live sync in Setup</b> and their results arrive here by themselves.";
-  const pp=$("#pendPill");
-  if(pp) pp.textContent = live ? (PENDING.length?`${PENDING.length} waiting`:"none waiting") : "live sync off";
   const dc=dutyCounts(), vals=Object.values(dc);
   $("#dutyPill").textContent=S.games.length&&vals.length
     ? `${vals.reduce((a,b)=>a+b,0)} assigned · ${Math.min(...vals)}–${Math.max(...vals)} per team`
@@ -1663,12 +1702,6 @@ function renderDuties(){
         </div>`).join("")}</div></div>`;
   }).join("") : `<div class="empty">Generate a schedule first.</div>`;
 
-  $("#dutyLinks").innerHTML = S.teams.length ? S.teams.map(t=>`
-    <div class="team-card">
-      <div class="th" style="background:${t.color}">${esc(t.name)}
-        <span style="margin-left:auto;font-weight:600">${dc[t.id]} matches</span></div>
-      <div style="padding:10px 12px"><button class="btn sm" data-slink="${t.id}">Copy scorer link</button></div>
-    </div>`).join("") : `<div class="empty">Create teams first.</div>`;
 }
 
 /* ============================================================
@@ -1949,48 +1982,6 @@ function boardLink(){
   const base=location.href.replace(/[^/]*$/,"")+"board.html";
   return {url:base+"#d="+encodeURIComponent(pay.text)};
 }
-function scorerLink(teamId){
-  const pay=boardPayload();
-  if(pay.err) return pay;
-  const idx=S.teams.findIndex(t=>t.id===teamId);
-  if(idx<0) return {err:"Unknown team"};
-  const base=location.href.replace(/[^/]*$/,"")+"scorer.html";
-  return {url:base+"#t="+idx+"&d="+encodeURIComponent(pay.text)};
-}
-/* "R2.<sig>.<triples>" — each result is 3 characters: index, score A, score B. */
-function parseResults(code){
-  const m=String(code||"").trim().match(/^R2\.([A-Za-z0-9]{6})\.([A-Za-z0-9_-]*)$/);
-  if(!m) return {err:"That does not look like a results code."};
-  if(m[1]!==schedSig()) return {err:"That code belongs to a different schedule. Ask the team for a fresh one."};
-  const body=m[2], out=[];
-  if(body.length%3) return {err:"That code looks truncated."};
-  for(let i=0;i<body.length;i+=3){
-    const gi=B64.indexOf(body[i]), a=B64.indexOf(body[i+1]), b=B64.indexOf(body[i+2]);
-    if(gi<0||a<0||b<0||gi>=S.games.length) return {err:"That code could not be read."};
-    out.push({game:S.games[gi], sa:a, sb:b});
-  }
-  return {results:out};
-}
-async function applyResults(code){
-  const r=parseResults(code);
-  if(r.err){ $("#impOut").innerHTML=`<span style="color:var(--danger)">${esc(r.err)}</span>`; return; }
-  if(!r.results.length){ $("#impOut").textContent="That code carries no results."; return; }
-  const clash=r.results.filter(x=>x.game.status==="final"&&(x.game.sa!==x.sa||x.game.sb!==x.sb));
-  if(clash.length && !(await ask(
-      `${clash.length} of these already ${clash.length>1?"have":"has"} a different score recorded. Overwrite with the scorer’s version?`,
-      "Overwrite"))) return;
-  let n=0;
-  r.results.forEach(x=>{
-    if(x.sa===x.sb) return;
-    const g=x.game;
-    g.sa=x.sa; g.sb=x.sb; g.status="final"; g.walkover=null; g.log=[];
-    if(!g.startedAt) g.startedAt=Date.now();
-    g.endedAt=Date.now(); n++;
-  });
-  save(); renderAll();
-  $("#impBox").value="";
-  $("#impOut").innerHTML=`<span style="color:var(--accent);font-weight:600">${n} result${n===1?"":"s"} recorded.</span> Change any of them from Schedule or History.`;
-}
 async function copyText(txt){
   try{ await navigator.clipboard.writeText(txt); return true; }
   catch(e){
@@ -2056,54 +2047,197 @@ function renderCloud(){
     <div id="liveOut" class="small"></div>`;
 }
 
-/* ---------- results posted by scoring teams ---------- */
-let PENDING=[], UNWATCH=null;
-function watchResults(){
-  if(UNWATCH){ try{UNWATCH();}catch(e){} UNWATCH=null; }
-  if(!S.cloud||!S.cloud.on||!S.cloud.slug||!window.PJ||!PJ.isAdmin()) return;
-  UNWATCH=PJ.watchResults(S.cloud.slug,rows=>{
-    PENDING=rows||[]; renderPending(); renderDuties();
-  },e=>{});
+/* Students cannot submit results, so there is no inbound queue. */
+
+/* ============================================================
+   ICONS
+   One inline set, stroked in currentColor so both themes get it free.
+   ============================================================ */
+const ICON={
+  teams:'<circle cx="9" cy="8" r="3.1"/><path d="M3.2 19.2a5.9 5.9 0 0 1 11.6 0"/><path d="M16.4 6.2a3 3 0 0 1 0 5.9"/><path d="M18 14.4a5.6 5.6 0 0 1 3 4.8"/>',
+  attend:'<rect x="4.2" y="4.4" width="15.6" height="16" rx="2.3"/><path d="M9 3.2h6v3.2H9z"/><path d="m8.6 13.2 2.3 2.3 4.5-4.5"/>',
+  whistle:'<path d="M14.4 9.1h6.3v3.4a5.4 5.4 0 0 1-10.3 2.2"/><circle cx="7.2" cy="13.6" r="4.6"/><path d="M12.6 5.6h4.2"/>',
+  calendar:'<rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.3"/><path d="M3.4 10h17.2M8.4 3.4v3.4M15.6 3.4v3.4"/>',
+  court:'<rect x="2.6" y="5.4" width="18.8" height="13.2" rx="1.8"/><path d="M12 5.4v13.2M2.6 12h3.6M17.8 12h3.6"/>',
+  trophy:'<path d="M7.4 4.2h9.2v5a4.6 4.6 0 1 1-9.2 0z"/><path d="M7.4 6.1H4.8a2.6 2.6 0 0 0 2.6 2.6M16.6 6.1h2.6a2.6 2.6 0 0 1-2.6 2.6"/><path d="M12 13.8v3.4M8.6 20.3h6.8l-.8-3.1H9.4z"/>',
+  star:'<path d="m12 3.6 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.8l5.9-.8z"/>',
+  clock:'<circle cx="12" cy="12" r="8.6"/><path d="M12 7.1V12l3.2 1.9"/>',
+  user:'<circle cx="12" cy="8.1" r="3.4"/><path d="M5.4 19.6a6.6 6.6 0 0 1 13.2 0"/>',
+  gear:'<circle cx="12" cy="12" r="3.1"/><path d="M19.1 14.2a1.6 1.6 0 0 0 .3 1.8l.1.1a1.9 1.9 0 1 1-2.7 2.7l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.3a1.9 1.9 0 1 1-3.8 0v-.2a1.6 1.6 0 0 0-2.8-1.1l-.1.1a1.9 1.9 0 1 1-2.7-2.7l.1-.1a1.6 1.6 0 0 0-1.1-2.7h-.3a1.9 1.9 0 1 1 0-3.8h.2a1.6 1.6 0 0 0 1.1-2.8l-.1-.1a1.9 1.9 0 1 1 2.7-2.7l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5v-.3a1.9 1.9 0 1 1 3.8 0v.2a1.6 1.6 0 0 0 2.7 1.1l.1-.1a1.9 1.9 0 1 1 2.7 2.7l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.3a1.9 1.9 0 1 1 0 3.8h-.2a1.6 1.6 0 0 0-1.5 1z"/>',
+  chart:'<path d="M4 19.4V4.6M4 19.4h15.8"/><path d="m7.4 15.6 3.4-4.2 3 2.4 4.1-5.6"/>'
+};
+function ico(n,size){
+  const d=ICON[n]; if(!d) return "";
+  return `<svg class="ico" viewBox="0 0 24 24" width="${size||16}" height="${size||16}" fill="none"
+    stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true">${d}</svg>`;
 }
-function renderPending(){
-  const box=$("#pendBox"); if(!box) return;
-  if(!S.cloud||!S.cloud.on){
-    box.innerHTML=`<p class="small muted" style="margin:0">Turn on live sync in Setup and results sent by scoring teams land here.</p>`; return; }
-  if(!PENDING.length){
-    box.innerHTML=`<p class="small muted" style="margin:0">Nothing waiting. Results sent by a scoring team appear here the moment they are saved.</p>`; return; }
-  box.innerHTML=`<div class="row" style="margin-bottom:10px">
-      <button class="btn primary sm" id="applyAll">Accept all ${PENDING.length}</button>
-      <button class="btn sm ghost" id="rejectAll">Discard all</button></div>
-    <table><thead><tr><th>Match</th><th>From</th><th class="num">Score</th><th class="num"></th></tr></thead>
-    <tbody>${PENDING.map(r=>{
-      const g=S.games[r.gameIdx];
-      if(!g) return "";
-      const conflict=g.status==="final"&&(g.sa!==r.sa||g.sb!==r.sb);
-      return `<tr>
-        <td class="small">S${g.session||"\u2013"} \u00b7 C${g.court||"\u2013"}<br>
-          <span class="muted">${esc(teamName(g.teamA))} v ${esc(teamName(g.teamB))}</span></td>
-        <td class="small">${esc((S.teams[r.teamIdx]||{}).name||"\u2014")}</td>
-        <td class="num"><b>${r.sa}\u2013${r.sb}</b>${conflict?`<br><span class="small" style="color:var(--warn)">now ${g.sa}\u2013${g.sb}</span>`:""}</td>
-        <td class="num"><button class="btn sm" data-apply="${r.gameIdx}">Accept</button></td></tr>`;
-    }).join("")}</tbody></table>`;
-}
-async function applyPending(list){
-  let n=0;
-  list.forEach(r=>{
-    const g=S.games[r.gameIdx];
-    if(!g||r.sa===r.sb) return;
-    g.sa=r.sa; g.sb=r.sb; g.status="final"; g.walkover=null; g.log=[];
-    if(!g.startedAt) g.startedAt=Date.now();
-    g.endedAt=Date.now(); n++;
+function paintTabIcons(){
+  $$("#tabs button[data-ico]").forEach(b=>{
+    if(b.querySelector("svg")) return;
+    b.insertAdjacentHTML("afterbegin", ico(b.dataset.ico,15));
   });
-  await clearPending(list.map(r=>r.gameIdx));
-  save(); renderAll();
-  toast(`${n} result${n===1?"":"s"} accepted`);
 }
-async function clearPending(ids){
-  try{ await PJ.clearResults(S.cloud.slug,ids); }catch(e){ toast(PJ.explain(e)); }
-  PENDING=PENDING.filter(r=>!ids.includes(r.gameIdx));
-  renderPending();
+
+/* ============================================================
+   TEAM PROGRESS, SESSION BY SESSION
+   Cumulative league points (or games won) after each session,
+   so a team can trace its own arc.
+   ============================================================ */
+function progressSeries(mode){
+  const per=(mode==="wins")?1:S.meta.winPts;
+  const series=S.teams.map(t=>({name:t.name,color:t.color,v:[0]}));
+  const idx={}; S.teams.forEach((t,i)=>idx[t.id]=i);
+  let lastPlayed=0;
+  S.games.forEach(g=>{ if(g.status==="final"&&g.session>lastPlayed) lastPlayed=g.session; });
+  for(let sess=1;sess<=lastPlayed;sess++){
+    series.forEach(x=>x.v.push(x.v[x.v.length-1]));
+    S.games.filter(g=>g.status==="final"&&g.session===sess).forEach(g=>{
+      const w=(g.sa>g.sb)?g.teamA:g.teamB;
+      const i=idx[w]; if(i!=null) series[i].v[sess]+=per;
+    });
+  }
+  return {series,lastPlayed};
+}
+/* Draws the chart itself. Axis labels name values the lines actually reach. */
+function lineChartSVG(series,lastPlayed,yTitle){
+  const W=760,H=290,L=46,R=104,T=18,B=38;
+  const iw=W-L-R, ih=H-T-B;
+  let top=0; series.forEach(s=>s.v.forEach(v=>{ if(v>top) top=v; }));
+  /* smallest tidy step whose four ticks still clear the highest line,
+     so the axis never runs far past the data */
+  const LADDER=[1,2,3,4,5,6,8,10,12,15,20,25,30,40,50,60,80,100,150,200];
+  const step=LADDER.find(x=>x*4>=top)||Math.ceil(top/4);
+  const yMax=step*4;
+  const x=i=>L+(lastPlayed===0?0:(i/lastPlayed)*iw);
+  const y=v=>T+ih-(v/yMax)*ih;
+  let g="";
+  for(let k=0;k<=4;k++){
+    const v=Math.round(yMax/4*k), yy=y(v);
+    g+=`<line x1="${L}" y1="${yy.toFixed(1)}" x2="${L+iw}" y2="${yy.toFixed(1)}"
+         stroke="var(--line)" stroke-width="1"${k?' stroke-dasharray="3 4"':''}/>`;
+    g+=`<text x="${L-9}" y="${(yy+4).toFixed(1)}" text-anchor="end"
+         fill="var(--ink-3)" font-size="11" font-family="var(--f-mono)">${v}</text>`;
+  }
+  for(let i=0;i<=lastPlayed;i++){
+    g+=`<text x="${x(i).toFixed(1)}" y="${H-14}" text-anchor="middle"
+         fill="var(--ink-3)" font-size="11" font-family="var(--f-display)"
+         letter-spacing="1">${i===0?"START":"S"+i}</text>`;
+  }
+  const order=series.map((s,i)=>({s,i,end:s.v[s.v.length-1]}))
+                    .sort((a,b)=>b.end-a.end);
+  /* nudge end labels apart so none sit on top of another */
+  const used=[];
+  order.forEach(o=>{
+    let yy=y(o.end);
+    while(used.some(u=>Math.abs(u-yy)<13)) yy+=13;
+    o.labelY=Math.min(yy,T+ih+10); used.push(o.labelY);
+  });
+  series.forEach((s,i)=>{
+    const pts=s.v.map((v,k)=>`${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    g+=`<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4"
+         stroke-linejoin="round" stroke-linecap="round" opacity=".95"/>`;
+    s.v.forEach((v,k)=>{ if(k===0&&lastPlayed>0) return;
+      g+=`<circle cx="${x(k).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${k===lastPlayed?3.8:2.5}"
+           fill="${s.color}"/>`; });
+  });
+  order.forEach(o=>{
+    g+=`<text x="${L+iw+9}" y="${(o.labelY+4).toFixed(1)}" fill="${o.s.color}"
+         font-size="12" font-weight="600" font-family="var(--f-display)">${esc(o.s.name)} ${o.end}</text>`;
+  });
+  g+=`<line x1="${L}" y1="${T+ih}" x2="${L+iw}" y2="${T+ih}" stroke="var(--line-2)" stroke-width="1.4"/>`;
+  g+=`<text x="6" y="${T-5}" text-anchor="start" fill="var(--ink-3)" font-size="10"
+       font-family="var(--f-display)" letter-spacing="1.2">${esc(yTitle)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="auto"
+    style="max-width:100%;display:block" role="img"
+    aria-label="Cumulative ${esc(yTitle)} for each team by session">${g}</svg>`;
+}
+function renderProgress(){
+  const box=$("#progBox"); if(!box) return;
+  const mode=(S.ui&&S.ui.progMode)||"pts";
+  $$("#progSeg button").forEach(b=>b.setAttribute("aria-selected",b.dataset.pm===mode));
+  const {series,lastPlayed}=progressSeries(mode);
+  const pill=$("#progPill");
+  if(pill) pill.textContent = lastPlayed ? `through session ${lastPlayed}` : "no games yet";
+  if(!lastPlayed||!series.length){
+    box.innerHTML=`<div class="empty">Record a score and each team's line starts here.</div>`;
+    return;
+  }
+  box.innerHTML=lineChartSVG(series,lastPlayed,mode==="wins"?"GAMES WON":"LEAGUE POINTS");
+}
+
+/* ============================================================
+   MVP — who is winning most of what they play
+   ============================================================ */
+function mvpRows(){
+  const {PS}=computeStats();
+  return S.players.filter(p=>p.teamId).map(p=>{
+    const st=PS[p.id];
+    return {p,s:st,rate:st.gp?st.w/st.gp:0,diff:st.pf-st.pa};
+  });
+}
+const mvpSort=(a,b)=> b.rate-a.rate || b.s.w-a.s.w || b.diff-a.diff
+                   || a.p.last.localeCompare(b.p.last);
+function renderMvp(){
+  const box=$("#mvpBody"); if(!box) return;
+  const min=Math.max(1,parseInt(($("#mvpMin")||{}).value,10)||3);
+  const all=mvpRows();
+  const played=all.filter(r=>r.s.gp>0);
+  const eligible=all.filter(r=>r.s.gp>=min).sort(mvpSort);
+  const short=played.filter(r=>r.s.gp<min).sort(mvpSort);
+
+  const pc=(r)=>Math.round(r.rate*100);
+  const card=(r,i)=>`<div class="card" style="margin:0">
+      <div class="card-h"><h2>${["Most valuable","Runner up","Third"][i]||"Top"}</h2>
+        <span class="pill final spacer">${pc(r)}% win rate</span></div>
+      <div class="card-b">
+        <div class="lead" style="border:0;padding:0">
+          ${medal(i)}
+          <span class="dot" style="background:${teamColor(r.p.teamId)}"></span>
+          <div class="nm"><b style="font-size:16px">${esc(fullName(r.p))}</b>
+            <span>${esc(teamName(r.p.teamId))} · ${r.s.w}W–${r.s.l}L in ${r.s.gp} games
+              · ${r.diff>0?"+":""}${r.diff} diff</span></div>
+        </div>
+        <div style="margin-top:11px">${formHTML(r.s.form)}</div>
+      </div></div>`;
+  const top=$("#mvpTop");
+  if(top) top.innerHTML = eligible.length
+    ? eligible.slice(0,3).map(card).join("")
+    : `<div class="card" style="margin:0"><div class="empty">No student has played ${min} games yet.</div></div>`;
+
+  /* best in each team */
+  const tbox=$("#mvpTeams");
+  if(tbox) tbox.innerHTML = S.teams.length ? S.teams.map(t=>{
+    const mem=all.filter(r=>r.p.teamId===t.id&&r.s.gp>0).sort(mvpSort);
+    const best=mem.find(r=>r.s.gp>=min)||mem[0];
+    return `<div class="team-card">
+      <div class="th" style="background:${t.color}">${esc(t.name)}</div>
+      <div style="padding:11px 12px">
+        ${best?`<div style="font-weight:600;font-size:14px">${esc(fullName(best.p))}</div>
+          <div class="small muted" style="margin-top:2px">${pc(best)}% · ${best.s.w}W–${best.s.l}L
+            · ${best.s.gp} games${best.s.gp<min?" (below the minimum)":""}</div>`
+        :`<div class="small muted">Nobody has played yet.</div>`}
+      </div></div>`;
+  }).join("") : `<div class="empty">Create teams first.</div>`;
+
+  const line=(r,i,dim)=>`<tr${dim?' style="opacity:.55"':''}>
+      <td class="num">${dim?'<span class="muted">–</span>':medal(i)}</td>
+      <td><b>${esc(r.p.last)}</b>, ${esc(r.p.given)}</td>
+      <td><span class="dot" style="background:${teamColor(r.p.teamId)};margin-right:6px"></span>${esc(teamName(r.p.teamId))}</td>
+      <td class="num">${r.s.gp}</td><td class="num">${r.s.w}</td><td class="num">${r.s.l}</td>
+      <td class="num">${r.diff>0?"+":""}${r.diff}</td>
+      <td class="num"><b>${pc(r)}%</b></td>
+      <td><div class="row" style="gap:7px"><div class="bar" style="flex:1"><i style="width:${pc(r)}%"></i></div></div></td>
+      <td>${formHTML(r.s.form)}</td></tr>`;
+  box.innerHTML = played.length ? `<table>
+    <thead><tr><th class="num">Rank</th><th>Student</th><th>Team</th><th class="num">GP</th>
+      <th class="num">W</th><th class="num">L</th><th class="num">Diff</th>
+      <th class="num">Win %</th><th>Rate</th><th>Form</th></tr></thead>
+    <tbody>${eligible.map((r,i)=>line(r,i,false)).join("")}
+      ${short.length?`<tr><td colspan="10" class="small muted" style="padding-top:14px">
+        Fewer than ${min} games — shown but not ranked</td></tr>`:""}
+      ${short.map(r=>line(r,0,true)).join("")}</tbody></table>`
+    : `<div class="empty">No games played yet.</div>`;
 }
 
 /* ---------- the class QR ---------- */
@@ -2176,7 +2310,7 @@ function saveCfg(){
    RENDER + EVENTS
    ============================================================ */
 function renderAll(){ renderTeams(); renderAttendance(); renderDuties(); renderSchedule(); renderCourts();
-  renderStandings(); renderHistory(); renderPlayers(); renderSetup(); renderCloud(); renderPending(); }
+  renderStandings(); renderMvp(); renderProgress(); renderHistory(); renderPlayers(); renderSetup(); renderCloud(); }
 
 function showView(v){
   $$(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
@@ -2203,6 +2337,8 @@ document.addEventListener("click",e=>{
   if(t.id==="liveOff"){ disableLive(); return; }
   if(t.id==="pushNowBtn"){ pushNow(); return; }
   if(t.id==="showQR"){ showClassQR(); return; }
+  const pm=t.closest("#progSeg button");
+  if(pm){ S.ui.progMode=pm.dataset.pm; save(); renderProgress(); return; }
   if(t.id==="qrClose"){ $("#qrOverlay").classList.remove("open"); return; }
   if(t.id==="copyLive"){
     const u=liveBoardLink(); if(!u) return toast("Turn on live sync first");
@@ -2214,28 +2350,10 @@ document.addEventListener("click",e=>{
     });
     return;
   }
-  if(t.id==="applyAll"){ applyPending(PENDING.slice()); return; }
-  if(t.id==="rejectAll"){ clearPending(PENDING.map(r=>r.game_idx)); return; }
-  const ap=t.closest("[data-apply]");
-  if(ap){ const r=PENDING.find(x=>x.game_idx===+ap.dataset.apply); if(r) applyPending([r]); return; }
   if(t.closest("[data-bypass]")){ generateSchedule(true); return; }
   const sess=t.closest("[data-sess]");
   if(sess){ S.ui.session=+sess.dataset.sess; save(); renderSchedule(); renderCourts(); return; }
 
-  const sl=t.closest("[data-slink]");
-  if(sl){
-    const idx=S.teams.findIndex(x=>x.id===sl.dataset.slink);
-    const liveUrl=liveScorerLink(idx);
-    const r = (S.cloud&&S.cloud.on&&liveUrl) ? {url:liveUrl} : scorerLink(sl.dataset.slink);
-    if(r.err) return toast(r.err);
-    copyText(r.url).then(okc=>{
-      $("#dutyLinkOut").innerHTML = okc
-        ? `<span style="color:var(--accent);font-weight:600">${esc(teamName(sl.dataset.slink))} link copied</span> · ${r.url.length} characters`
-        : `<div class="small muted" style="margin-bottom:4px">Copy this link by hand:</div>
-           <textarea readonly style="width:100%;height:70px;font-size:11px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:8px">${esc(r.url)}</textarea>`;
-    });
-    return;
-  }
   const att=t.closest("[data-att]"); if(att){ e.stopPropagation(); return toggleAbsent(S.ui.attSession||1, att.dataset.att); }
   const wo=t.closest("[data-wo]"); if(wo){ e.stopPropagation(); return walkover(wo.dataset.wo); }
   const qsv=t.closest("[data-qsave]"); if(qsv){ e.stopPropagation(); return quickSave(qsv.dataset.qsave); }
@@ -2310,12 +2428,12 @@ document.addEventListener("change",e=>{
 $("#rosterSearch").addEventListener("input",renderRoster);
 $("#playerSearch").addEventListener("input",renderPlayers);
 $("#histSearch").addEventListener("input",renderHistory);
+$("#mvpMin").addEventListener("input",renderMvp);
 $("#histCsv").addEventListener("click",exportGamesCSV);
 $("#dutyRedo").addEventListener("click",()=>{
   if(!S.games.length) return toast("Generate a schedule first");
   assignDuties(); save(); renderAll(); toast("Duties reassigned");
 });
-$("#impApply").addEventListener("click",()=>applyResults($("#impBox").value));
 $("#attAllIn").addEventListener("click",()=>{
   const sess=S.ui.attSession||1;
   const out=absentList(sess);
@@ -2402,8 +2520,9 @@ function bootUI(){
   let th=null;
   try{ th=localStorage.getItem(KEY+"-theme"); }catch(e){}
   if(th==="dark"||th==="light") document.documentElement.setAttribute("data-theme",th);
+  paintTabIcons();
   renderAll();
-  if(S.cloud&&S.cloud.on&&S.cloud.slug){ pushNow(); watchResults(); }
+  if(S.cloud&&S.cloud.on&&S.cloud.slug){ pushNow(); }
   setInterval(renderCloud,20000);
 }
 (function init(){

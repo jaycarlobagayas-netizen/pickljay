@@ -124,13 +124,13 @@ and comma exactly where it is. This is the only file you ever edit.
 
 1. Go to your repository: **https://github.com/jaycarlobagayas-netizen/pickljay**
 2. Click **Add file → Upload files**.
-3. Drag in **all eight files** from the zip:
+3. Drag in **all ten files** from the zip:
 
    ```
-   index.html          firebase-config.js      README.md
-   app.html            db.js                   SETUP.md
-   board.html          firestore.rules         LICENSE
-   scorer.html         .nojekyll
+   index.html          db.js               README.md
+   app.html            firebase-config.js  SETUP.md
+   board.html          firestore.rules     LICENSE
+   .nojekyll
    ```
 
    Unzip first and drag the **files**, not the folder, or GitHub will nest them
@@ -193,6 +193,8 @@ how many people are signed into one account.
 | You want to | Do this |
 |---|---|
 | Show the join QR | **Setup → Live sync → Show QR** |
+| See how teams are trending | **Rankings** tab, the progress chart |
+| See the strongest players | **MVP** tab |
 | Mark who is absent | **Attendance** tab, tap ✕ beside a name |
 | Enter a score | **Schedule** tab, type both numbers, *Save score* |
 | Score rally by rally | Tap the match card itself |
@@ -202,13 +204,16 @@ how many people are signed into one account.
 
 Everything you do is published within about a second. You never send a new link.
 
-### How a scoring team sends you results
+### Who records scores
 
-They are already signed in on the student account. From the board they tap
-**✎ Score a match**, pick their team, and enter scores for the matches they are
-refereeing. Each one lands in your **Duties → Results waiting** within a second,
-where you *Accept* or *Discard*. Nothing a student sends changes a score on its
-own.
+**Only you.** Student accounts can read the tournament and nothing else — there
+is no screen, button or hidden address through which a student can record,
+change or submit a score, and the Firestore rules refuse any write that does
+not come from the admin address.
+
+The **Duties** tab still assigns a team to referee each match. They keep score
+on paper courtside and hand you the slip; you type it into **Schedule** or
+**Courts**. Every phone in the class sees the result about a second later.
 
 ---
 
@@ -247,8 +252,7 @@ server by itself, which covers a lost or flat phone.
 |---|---|
 | `index.html` | Sign-in page — the link everyone opens |
 | `app.html` | Teacher app; only the admin account can open it |
-| `board.html` | Student board, live |
-| `scorer.html` | Scoring sheet for the team on duty |
+| `board.html` | Student board, live — read-only |
 | `db.js` | Talks to Firebase. Do not edit |
 | `firebase-config.js` | **The only file you edit** |
 | `firestore.rules` | Paste into the Firebase console; not used by the site |

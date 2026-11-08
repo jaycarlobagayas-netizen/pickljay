@@ -6,6 +6,9 @@ rules_version = '2';
 // IMPORTANT: the address on the isAdmin() line must match exactly the
 // admin user you created under Authentication -> Users, and the
 // adminEmail in firebase-config.js.
+//
+// Students can READ the tournament and nothing else. There is no path
+// by which a student account can write anything, anywhere.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -16,9 +19,6 @@ service cloud.firestore {
     }
     function signedIn() {
       return request.auth != null;
-    }
-    function scoreOk(v) {
-      return v is int && v >= 0 && v <= 99;
     }
 
     // The tournament everyone reads. Only the teacher may change it.
@@ -33,26 +33,7 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Results posted by a team on scoring duty. Anyone signed in may
-    // send one; only the teacher reads the queue and clears it.
-    // Nothing here changes the tournament by itself.
-    match /results/{rid} {
-      allow read: if isAdmin()
-                  || (signedIn() && resource.data.by == request.auth.uid);
-      allow create, update: if signedIn()
-        && request.resource.data.keys().hasAll(
-             ['slug','gameIdx','teamIdx','sa','sb','by','updatedAt'])
-        && request.resource.data.by == request.auth.uid
-        && request.resource.data.gameIdx is int
-        && request.resource.data.gameIdx >= 0
-        && request.resource.data.gameIdx < 4096
-        && request.resource.data.teamIdx is int
-        && scoreOk(request.resource.data.sa)
-        && scoreOk(request.resource.data.sb);
-      allow delete: if isAdmin();
-    }
-
-    // Nothing else is reachable.
+    // Everything else is closed, to everyone.
     match /{document=**} {
       allow read, write: if false;
     }

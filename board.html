@@ -146,12 +146,12 @@ td.num,.sc,.fin,.big{font-family:var(--f-mono)}
       <div><b id="bTitle">Pickleball Tournament</b><span id="bSub">Class board</span></div>
     </div>
     <span class="pill" id="liveDot" hidden></span>
-    <a class="pill" id="goScore" href="scorer.html" hidden style="text-decoration:none">✎ Score a match</a>
     <button class="pill" id="signOut" hidden style="border:0;cursor:pointer">Sign out</button>
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" data-view="live" aria-selected="true">Live</button>
       <button role="tab" data-view="teams" aria-selected="false">Teams</button>
       <button role="tab" data-view="me" aria-selected="false">My games</button>
+      <button role="tab" data-view="progress" aria-selected="false">Progress</button>
       <button role="tab" data-view="schedule" aria-selected="false">Schedule</button>
     </nav>
   </div>
@@ -187,6 +187,22 @@ td.num,.sc,.fin,.big{font-family:var(--f-mono)}
       </div>
     </div>
     <div id="meOut"></div>
+  </section>
+
+  <section class="view" id="view-progress">
+    <div class="card">
+      <div class="card-h"><h2>Team progress</h2><span class="pill" id="progPill"></span>
+        <div class="spacer" style="display:flex;gap:3px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:3px" id="progSeg">
+          <button class="pill" data-pm="pts" aria-selected="true" style="border:0;cursor:pointer">Points</button>
+          <button class="pill" data-pm="wins" aria-selected="false" style="border:0;cursor:pointer;background:transparent">Wins</button>
+        </div>
+      </div>
+      <div class="card-b"><div id="progBox"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Best win rates</h2><span class="pill">3 games minimum</span></div>
+      <div class="scroll"><div id="mvpBox"></div></div>
+    </div>
   </section>
 
   <section class="view" id="view-schedule">
@@ -420,6 +436,99 @@ function renderTeams(){
         <td class="num">${p.w}W-${p.l}L</td></tr>`).join("")}</tbody></table></div></div>`;
   }).join("") || `<div class="empty">No teams yet.</div>`;
 }
+let PROGMODE="pts";
+function progressSeries(mode){
+  const per=(mode==="wins")?1:(D.meta.winPts||2);
+  const series=D.teams.map(t=>({name:t.name,color:t.color,v:[0]}));
+  let lastPlayed=0;
+  D.games.forEach(g=>{ if(g.status==="final"&&g.session>lastPlayed) lastPlayed=g.session; });
+  for(let sess=1;sess<=lastPlayed;sess++){
+    series.forEach(x=>x.v.push(x.v[x.v.length-1]));
+    D.games.filter(g=>g.status==="final"&&g.session===sess).forEach(g=>{
+      const w=(g.sa>g.sb)?g.teamA:g.teamB;
+      if(series[w]) series[w].v[sess]+=per;
+    });
+  }
+  return {series,lastPlayed};
+}
+function lineChartSVG(series,lastPlayed,yTitle){
+  const W=760,H=290,L=46,R=104,T=18,B=38;
+  const iw=W-L-R, ih=H-T-B;
+  let top=0; series.forEach(s=>s.v.forEach(v=>{ if(v>top) top=v; }));
+  /* smallest tidy step whose four ticks still clear the highest line,
+     so the axis never runs far past the data */
+  const LADDER=[1,2,3,4,5,6,8,10,12,15,20,25,30,40,50,60,80,100,150,200];
+  const step=LADDER.find(x=>x*4>=top)||Math.ceil(top/4);
+  const yMax=step*4;
+  const x=i=>L+(lastPlayed===0?0:(i/lastPlayed)*iw);
+  const y=v=>T+ih-(v/yMax)*ih;
+  let g="";
+  for(let k=0;k<=4;k++){
+    const v=Math.round(yMax/4*k), yy=y(v);
+    g+=`<line x1="${L}" y1="${yy.toFixed(1)}" x2="${L+iw}" y2="${yy.toFixed(1)}" stroke="var(--line)" stroke-width="1"${k?' stroke-dasharray="3 4"':''}/>`;
+    g+=`<text x="${L-9}" y="${(yy+4).toFixed(1)}" text-anchor="end" fill="var(--ink-3)" font-size="11" font-family="var(--f-mono)">${v}</text>`;
+  }
+  for(let i=0;i<=lastPlayed;i++){
+    g+=`<text x="${x(i).toFixed(1)}" y="${H-14}" text-anchor="middle" fill="var(--ink-3)" font-size="11" font-family="var(--f-display)" letter-spacing="1">${i===0?"START":"S"+i}</text>`;
+  }
+  const order=series.map((s,i)=>({s,i,end:s.v[s.v.length-1]})).sort((a,b)=>b.end-a.end);
+  const used=[];
+  order.forEach(o=>{ let yy=y(o.end);
+    while(used.some(u=>Math.abs(u-yy)<13)) yy+=13;
+    o.labelY=Math.min(yy,T+ih+10); used.push(o.labelY); });
+  series.forEach(s=>{
+    const pts=s.v.map((v,k)=>`${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    g+=`<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" opacity=".95"/>`;
+    s.v.forEach((v,k)=>{ if(k===0&&lastPlayed>0) return;
+      g+=`<circle cx="${x(k).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${k===lastPlayed?3.8:2.5}" fill="${s.color}"/>`; });
+  });
+  order.forEach(o=>{
+    g+=`<text x="${L+iw+9}" y="${(o.labelY+4).toFixed(1)}" fill="${o.s.color}" font-size="12" font-weight="600" font-family="var(--f-display)">${esc(o.s.name)} ${o.end}</text>`;
+  });
+  g+=`<line x1="${L}" y1="${T+ih}" x2="${L+iw}" y2="${T+ih}" stroke="var(--line-2)" stroke-width="1.4"/>`;
+  g+=`<text x="6" y="${T-5}" text-anchor="start" fill="var(--ink-3)" font-size="10" font-family="var(--f-display)" letter-spacing="1.2">${esc(yTitle)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="auto" style="max-width:100%;display:block" role="img" aria-label="Cumulative ${esc(yTitle)} for each team by session">${g}</svg>`;
+}
+function renderProgress(){
+  const box=$("#progBox"); if(!box||!D) return;
+  $$("#progSeg button").forEach(b=>{
+    const on=b.dataset.pm===PROGMODE;
+    b.setAttribute("aria-selected",on);
+    b.style.background = on ? "var(--panel)" : "transparent";
+    b.style.color = on ? "var(--ink)" : "var(--ink-2)";
+  });
+  const {series,lastPlayed}=progressSeries(PROGMODE);
+  const pill=$("#progPill");
+  if(pill) pill.textContent = lastPlayed?`through session ${lastPlayed}`:"no games yet";
+  box.innerHTML = lastPlayed
+    ? lineChartSVG(series,lastPlayed,PROGMODE==="wins"?"GAMES WON":"LEAGUE POINTS")
+    : `<div class="empty">Lines appear once your teacher records the first score.</div>`;
+  renderMvpBoard();
+}
+function renderMvpBoard(){
+  const box=$("#mvpBox"); if(!box||!D) return;
+  const {P}=stats();
+  const rows=P.filter(p=>p.team!=null&&p.gp>0)
+    .map(p=>({p,rate:p.gp?p.w/p.gp:0,diff:p.pf-p.pa}))
+    .sort((a,b)=>b.rate-a.rate||b.p.w-a.p.w||b.diff-a.diff);
+  const MIN=3;
+  const ok=rows.filter(r=>r.p.gp>=MIN), few=rows.filter(r=>r.p.gp<MIN);
+  const line=(r,i,dim)=>`<tr${dim?' style="opacity:.55"':''}>
+    <td class="num">${dim?'<span class="muted">–</span>':`<span class="rank ${i===0?"top":""}">${i+1}</span>`}</td>
+    <td><b>${esc(r.p.last)}</b>, ${esc(r.p.given)}</td>
+    <td><span class="dot" style="background:${team(r.p.team).color};margin-right:6px"></span>${esc(team(r.p.team).name)}</td>
+    <td class="num">${r.p.gp}</td><td class="num">${r.p.w}</td><td class="num">${r.p.l}</td>
+    <td class="num"><b>${Math.round(r.rate*100)}%</b></td>
+    <td><div class="bar" style="min-width:70px"><i style="width:${Math.round(r.rate*100)}%"></i></div></td></tr>`;
+  box.innerHTML = rows.length ? `<table>
+    <thead><tr><th class="num">#</th><th>Student</th><th>Team</th><th class="num">GP</th>
+      <th class="num">W</th><th class="num">L</th><th class="num">Win %</th><th>Rate</th></tr></thead>
+    <tbody>${ok.map((r,i)=>line(r,i,false)).join("")}
+      ${few.length?`<tr><td colspan="8" class="small muted" style="padding-top:12px">Fewer than ${MIN} games — not ranked yet</td></tr>`:""}
+      ${few.map(r=>line(r,0,true)).join("")}</tbody></table>`
+    : `<div class="empty">No games played yet.</div>`;
+}
+
 function renderMe(){
   const q=fold($("#meSearch").value.trim());
   const sug=$("#meSug");
@@ -495,7 +604,7 @@ function renderAll(){
   $("#bSub").textContent=when&&!isNaN(when)
     ? `Updated ${when.toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`
     : D.meta.title;
-  renderLive(); renderTeams(); renderMe(); renderSchedule();
+  renderLive(); renderTeams(); renderMe(); renderProgress(); renderSchedule();
 }
 function show(v){
   VIEW=v;
@@ -508,6 +617,8 @@ document.addEventListener("click",e=>{
   const me=e.target.closest("[data-me]");
   if(me){ ME=+me.dataset.me; $("#meSearch").value=""; renderMe(); return; }
   if(e.target.id==="meClear"){ ME=null; $("#meSearch").value=""; $("#meSearch").focus(); renderMe(); return; }
+  const pm=e.target.closest("#progSeg button");
+  if(pm){ PROGMODE=pm.dataset.pm; renderProgress(); return; }
   const ss=e.target.closest("[data-sess]");
   if(ss){ SESS=+ss.dataset.sess; renderSchedule(); return; }
 });
@@ -555,7 +666,6 @@ async function offlineInit(){
     const slug=slugNow();
     try{ if(slug) localStorage.setItem("pj-slug",slug); }catch(e){}
     $("#signOut").hidden=false;
-    $("#goScore").hidden=false;
     if(!slug){ fail("No class code. Open the link your teacher gave you."); return; }
     $("#loadState").innerHTML=`<div class="card"><div class="card-b row" style="color:var(--ink-3);font-size:13.5px">Loading the tournament\u2026</div></div>`;
     startLive(slug);
