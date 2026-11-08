@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PED013 Pickleball Class Tournament</title>
+<meta name="description" content="Class pickleball tournament manager: teams, schedule, courtside scoring, team and individual stats.">
+<style>
+:root{
+  --bg:#f6f7f5; --panel:#ffffff; --panel-2:#f0f2ee; --line:#dfe3da;
+  --ink:#1b2318; --ink-2:#5c6554; --ink-3:#8a9280;
+  --accent:#4f7a28; --accent-ink:#ffffff; --accent-soft:#e8f2da;
+  --warn:#b4531a; --warn-soft:#fdeadd; --danger:#a32a2a;
+  --live:#1d7a4f; --shadow:0 1px 2px rgba(20,30,10,.06),0 8px 24px rgba(20,30,10,.06);
+  --r:14px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#13170f; --panel:#1b2016; --panel-2:#222819; --line:#333c27;
+  --ink:#eef2e6; --ink-2:#aab59b; --ink-3:#7d876e;
+  --accent:#9ccb62; --accent-ink:#14200a; --accent-soft:#26331a;
+  --warn:#e2a06a; --warn-soft:#3a2a18; --danger:#e07a7a;
+  --live:#6fd3a0; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+} }
+:root[data-theme="dark"]{
+  --bg:#13170f; --panel:#1b2016; --panel-2:#222819; --line:#333c27;
+  --ink:#eef2e6; --ink-2:#aab59b; --ink-3:#7d876e;
+  --accent:#9ccb62; --accent-ink:#14200a; --accent-soft:#26331a;
+  --warn:#e2a06a; --warn-soft:#3a2a18; --danger:#e07a7a;
+  --live:#6fd3a0; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.01em}
+h2{font-size:18px} h3{font-size:14px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em}
+a{color:var(--accent)}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:40;background:var(--panel);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1200px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.ball{width:26px;height:26px;border-radius:50%;background:var(--accent);position:relative;flex:none}
+.ball::before,.ball::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5) 0 2px, transparent 3px),
+             radial-gradient(circle at 70% 25%, rgba(255,255,255,.45) 0 2px, transparent 3px),
+             radial-gradient(circle at 50% 60%, rgba(255,255,255,.45) 0 2px, transparent 3px),
+             radial-gradient(circle at 25% 70%, rgba(255,255,255,.4) 0 2px, transparent 3px),
+             radial-gradient(circle at 75% 70%, rgba(255,255,255,.4) 0 2px, transparent 3px)}
+.brand b{font-size:15px;display:block;line-height:1.2}
+.brand span{font-size:11.5px;color:var(--ink-3)}
+.tabs{display:flex;gap:2px;background:var(--panel-2);padding:3px;border-radius:11px;overflow-x:auto;max-width:100%}
+.tabs button{border:0;background:transparent;color:var(--ink-2);padding:7px 13px;border-radius:9px;font-size:13.5px;font-weight:550;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.icon-btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;width:34px;height:34px;display:grid;place-items:center;font-size:15px}
+
+main{max-width:1200px;margin:0 auto;padding:18px 16px 90px}
+.view{display:none} .view.active{display:block}
+
+/* ---------- generic ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-b{padding:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{margin-left:auto}
+.grid{display:grid;gap:14px}
+.muted{color:var(--ink-3)} .small{font-size:12.5px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 13px;font-size:13.5px;font-weight:550}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}
+.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--panel-2);color:var(--ink-2)}
+.pill.live{background:color-mix(in srgb,var(--live) 18%,transparent);color:var(--live)}
+.pill.final{background:var(--accent-soft);color:var(--accent)}
+input[type=text],input[type=number],select{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:13.5px}
+input[type=number]{width:74px}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-2);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:650;position:sticky;top:56px;background:var(--panel);z-index:2}
+tbody tr:hover{background:var(--panel-2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow:auto;max-width:100%}
+.dot{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none}
+.empty{padding:34px 16px;text-align:center;color:var(--ink-3)}
+.banner{border:1px solid var(--line);background:var(--warn-soft);color:var(--warn);padding:10px 14px;border-radius:11px;font-size:13px;font-weight:550}
+
+/* ---------- teams ---------- */
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.team-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.team-card .th{padding:9px 12px;display:flex;align-items:center;gap:8px;font-weight:650;font-size:13.5px;color:#fff}
+.team-card ul{list-style:none;margin:0;padding:6px 0}
+.team-card li{padding:5px 12px;font-size:13px;display:flex;gap:8px;align-items:center}
+.team-card li span.n{color:var(--ink-3);font-size:11px;width:14px;flex:none}
+.roster-row td:first-child{width:28px}
+.assign-sel{min-width:120px}
+
+/* ---------- schedule ---------- */
+.session-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.session-strip button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 12px;font-size:13px;font-weight:600;white-space:nowrap}
+.session-strip button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.slotline{display:grid;grid-template-columns:62px 1fr;gap:12px;align-items:start;padding:10px 0;border-bottom:1px dashed var(--line)}
+.slotline:last-child{border-bottom:0}
+.slot-lab{font-size:11.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;padding-top:12px}
+.court-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.gcard{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:11px 12px}
+.gcard.is-live{border-color:var(--live);box-shadow:0 0 0 2px color-mix(in srgb,var(--live) 20%,transparent)}
+.gcard.is-final{background:var(--panel-2)}
+.gcard .court-tag{font-size:11px;font-weight:700;color:var(--ink-3);letter-spacing:.05em;text-transform:uppercase}
+.side{display:flex;align-items:center;gap:8px;padding:5px 0}
+.side .names{font-size:13px;line-height:1.3}
+.side .sc{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;font-size:17px;min-width:26px;text-align:right}
+.side.win .sc{color:var(--accent)}
+.side .tname{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+
+/* ---------- scoreboard overlay ---------- */
+.overlay{position:fixed;inset:0;background:rgba(10,14,8,.6);backdrop-filter:blur(3px);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:14px;overflow:auto}
+.overlay.open{display:flex}
+.sheet{background:var(--panel);border-radius:18px;width:min(720px,100%);box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden}
+.sheet-h{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.sheet-b{padding:16px}
+.score-pad{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.spad{border-radius:16px;padding:14px;color:#fff;display:flex;flex-direction:column;gap:6px;min-height:188px;position:relative;overflow:hidden}
+.spad .tn{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.92}
+.spad .pn{font-size:13px;line-height:1.35;opacity:.95}
+.spad .big{font-size:64px;font-weight:750;line-height:.95;font-variant-numeric:tabular-nums;margin-top:auto}
+.spad button.plus{position:absolute;inset:0;background:transparent;border:0;width:100%;height:100%;z-index:1;-webkit-tap-highlight-color:transparent}
+.spad .serve{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.95);color:#111;border-radius:999px;font-size:10.5px;font-weight:800;padding:3px 8px;letter-spacing:.05em;z-index:2}
+.switch-banner{margin-top:12px;background:var(--warn-soft);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);border-radius:12px;padding:10px 14px;font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:10px}
+.gamepoint{margin-top:12px;background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:9px 14px;font-weight:700;font-size:13.5px}
+.ctrl-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.clock{font-variant-numeric:tabular-nums;font-weight:650;color:var(--ink-2);font-size:13px}
+
+/* ---------- standings ---------- */
+.seg{display:inline-flex;background:var(--panel-2);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.seg button[aria-selected="true"]{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.bar{height:6px;border-radius:999px;background:var(--panel-2);overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;background:var(--accent)}
+
+/* per-team score inputs */
+.sc-in{width:52px;margin-left:auto;text-align:center;font-weight:750;font-size:19px;
+  font-variant-numeric:tabular-nums;padding:5px 4px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+.sc-in:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+.absent{text-decoration:line-through;opacity:.5}
+.subtag{font-size:9.5px;font-weight:800;letter-spacing:.05em;padding:1px 5px;border-radius:999px;
+  background:var(--accent-soft);color:var(--accent);margin-left:4px;vertical-align:1px}
+.gcard.cover{border-color:var(--warn);box-shadow:0 0 0 2px color-mix(in srgb,var(--warn) 18%,transparent)}
+/* attendance */
+.att-team{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.att-team .th{padding:8px 12px;font-weight:650;font-size:13px;color:#fff;display:flex;gap:8px;align-items:center}
+.att-row{display:flex;align-items:center;gap:9px;padding:6px 12px;border-top:1px solid var(--line);font-size:13.5px}
+.att-row:first-of-type{border-top:0}
+.att-row.out{background:var(--warn-soft)}
+.xbtn{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--panel);
+  font-size:14px;font-weight:800;line-height:1;display:grid;place-items:center;flex:none;color:var(--ink-3)}
+.xbtn[aria-pressed="true"]{background:var(--warn);border-color:transparent;color:#fff}
+.att-row .gcount{margin-left:auto;font-size:11.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+/* quick score entry */
+.qs{display:flex;gap:6px;align-items:center;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+.qs input{width:84px;text-align:center;font-variant-numeric:tabular-nums;font-weight:650;letter-spacing:.02em}
+.qs input::placeholder{font-weight:500;color:var(--ink-3);letter-spacing:0}
+.qs .hint{font-size:11.5px;color:var(--ink-3)}
+.qs-res{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);font-size:12.5px}
+.won{font-size:10.5px;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink)}
+.lost{font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:999px;background:var(--panel-2);color:var(--ink-3)}
+/* rankings */
+.podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
+.lead{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+.lead:last-child{border-bottom:0}
+.lead .nm{min-width:0;line-height:1.3}
+.lead .nm b{display:block;font-size:14px}
+.lead .nm span{font-size:11.5px;color:var(--ink-3)}
+.lead .big{margin-left:auto;font-weight:750;font-variant-numeric:tabular-nums;font-size:19px;text-align:right}
+.medal{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:800;flex:none;
+  background:var(--panel-2);color:var(--ink-3)}
+.medal.m1{background:var(--accent);color:var(--accent-ink)}
+.medal.m2{background:color-mix(in srgb,var(--accent) 34%,var(--panel-2));color:var(--ink)}
+.medal.m3{background:color-mix(in srgb,var(--accent) 17%,var(--panel-2));color:var(--ink)}
+.form{display:inline-flex;gap:3px}
+.form i{width:17px;height:17px;border-radius:5px;display:grid;place-items:center;font-size:9.5px;font-weight:800;font-style:normal;
+  background:var(--panel-2);color:var(--ink-3)}
+.form i.w{background:var(--accent);color:var(--accent-ink)}
+@media (max-width:620px){
+  .topbar-in{padding:8px 12px;gap:8px}
+  .brand span{display:none}
+  main{padding:14px 12px 90px}
+  .spad .big{font-size:52px}
+  th{top:0}
+}
+@media print{
+  .topbar,.tabs,.no-print,.overlay{display:none!important}
+  body{background:#fff} .card{box-shadow:none;border-color:#ccc}
+  .view{display:none!important} .view.active{display:block!important}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="ball"></div>
+      <div><b id="brandTitle">PED013 Pickleball</b><span id="brandSub">Class Tournament Manager</span></div>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-view="teams" aria-selected="true">Teams</button>
+      <button role="tab" data-view="attend" aria-selected="false">Attendance</button>
+      <button role="tab" data-view="duties" aria-selected="false">Duties</button>
+      <button role="tab" data-view="schedule" aria-selected="false">Schedule</button>
+      <button role="tab" data-view="courts" aria-selected="false">Courts</button>
+      <button role="tab" data-view="standings" aria-selected="false">Rankings</button>
+      <button role="tab" data-view="history" aria-selected="false">History</button>
+      <button role="tab" data-view="players" aria-selected="false">Players</button>
+      <button role="tab" data-view="setup" aria-selected="false">Setup</button>
+    </nav>
+    <span class="pill no-print" id="livePill" title="Live sync status" style="cursor:pointer">○ offline</span>
+    <button class="icon-btn no-print" id="signOut" title="Sign out">⏻</button>
+    <button class="icon-btn no-print" id="themeBtn" title="Toggle light / dark">◐</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ================= TEAMS ================= -->
+<section class="view active" id="view-teams">
+  <div class="grid" style="grid-template-columns:1fr">
+    <div class="card">
+      <div class="card-h">
+        <h2>Team assignment</h2>
+        <span class="pill" id="assignCount">0 / 0 assigned</span>
+        <div class="spacer row no-print">
+          <label class="field" style="flex-direction:row;align-items:center;gap:6px">
+            Teams <input type="number" id="teamCount" min="2" max="12" value="6">
+          </label>
+          <button class="btn" id="buildTeams">Create teams</button>
+          <button class="btn" id="autoRandom">Random balance</button>
+          <button class="btn" id="autoSnake">Snake by list</button>
+          <button class="btn ghost" id="clearAssign">Clear</button>
+        </div>
+      </div>
+      <div class="card-b">
+        <div id="teamCards" class="team-grid"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h">
+        <h2>Class roster</h2>
+        <span class="pill" id="rosterCount">0 students</span>
+        <div class="spacer row no-print">
+          <input type="text" id="rosterSearch" placeholder="Search name…" style="min-width:160px">
+          <button class="btn sm" id="addStudent">+ Add student</button>
+        </div>
+      </div>
+      <div class="scroll" style="max-height:520px">
+        <table id="rosterTable">
+          <thead><tr><th class="num">#</th><th>Student</th><th>Team</th><th class="no-print"></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ATTENDANCE ================= -->
+<section class="view" id="view-attend">
+  <div class="card">
+    <div class="card-h">
+      <h2>Attendance</h2>
+      <span class="pill" id="attPill"></span>
+      <div class="spacer row no-print">
+        <label class="field" style="flex-direction:row;align-items:center;gap:6px">
+          Session <select id="attSession"></select></label>
+        <button class="btn" id="attAllIn">Mark all present</button>
+      </div>
+    </div>
+    <div class="card-b">
+      <p class="small muted" style="margin:0 0 12px">Tap <b>✕</b> beside anyone who is not here. Their unplayed matches in this session are handed to an available teammate straight away. Tap again when they arrive and they go back in.</p>
+      <div id="attGrid" class="team-grid"></div>
+    </div>
+  </div>
+  <div id="attImpact"></div>
+</section>
+
+<!-- ================= DUTIES ================= -->
+<section class="view" id="view-duties">
+  <div class="card">
+    <div class="card-h">
+      <h2>Scorer &amp; referee duty</h2><span class="pill" id="dutyPill"></span>
+      <div class="spacer row no-print">
+        <label class="field" style="flex-direction:row;align-items:center;gap:6px">
+          Session <select id="dutySession"></select></label>
+        <button class="btn" id="dutyRedo">Reassign all</button>
+      </div>
+    </div>
+    <div class="card-b">
+      <p class="small muted" style="margin:0 0 12px">Each match is scored and refereed by a team that is not playing in that slot. Change any assignment below; the teams on court are never offered.</p>
+      <div id="dutyBody"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Scorer links</h2><span class="pill">one per team</span></div>
+    <div class="card-b">
+      <p class="small muted" style="margin:0 0 12px" id="dutyLinkNote"></p>
+      <div id="dutyLinks" class="team-grid"></div>
+      <div id="dutyLinkOut" class="small" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Results waiting</h2><span class="pill" id="pendPill"></span></div>
+    <div class="card-b"><div id="pendBox"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Results by code</h2><span class="pill">offline fallback</span></div>
+    <div class="card-b">
+      <p class="small muted" style="margin:0 0 10px">If a scoring team had no signal, they can read you a code instead. You can change anything it records afterwards.</p>
+      <textarea id="impBox" placeholder="R2.xxxxxx.&hellip;" style="width:100%;height:68px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px"></textarea>
+      <div class="row" style="margin-top:9px"><button class="btn primary" id="impApply">Apply results</button>
+        <span class="small muted" id="impOut"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SCHEDULE ================= -->
+<section class="view" id="view-schedule">
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h">
+      <h2>Tournament schedule</h2>
+      <span class="pill" id="schedSummary">not generated</span>
+      <div class="spacer row no-print">
+        <button class="btn primary" id="genSchedule">Generate schedule</button>
+        <button class="btn" id="reshuffleAll">Reshuffle all pairs</button>
+        <button class="btn ghost" id="printSched">Print</button>
+      </div>
+    </div>
+    <div class="card-b">
+      <div id="schedWarn"></div>
+      <div class="session-strip no-print" id="sessionStrip"></div>
+      <div id="sessionBody" style="margin-top:8px"></div>
+      <div id="rotationBox"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COURTS ================= -->
+<section class="view" id="view-courts">
+  <div class="card">
+    <div class="card-h">
+      <h2>Courtside</h2>
+      <span class="pill" id="liveHint">tap a match to score</span>
+      <div class="spacer row no-print">
+        <label class="field" style="flex-direction:row;align-items:center;gap:6px">
+          Session
+          <select id="courtSession"></select>
+        </label>
+      </div>
+    </div>
+    <div class="card-b"><div id="courtBody"></div></div>
+  </div>
+</section>
+
+<!-- ================= STANDINGS ================= -->
+<section class="view" id="view-standings">
+  <div id="podium" class="podium"></div>
+  <div class="card">
+    <div class="card-h">
+      <h2>Full ranking</h2>
+      <div class="seg no-print" id="standSeg">
+        <button data-s="team" aria-selected="true">By team</button>
+        <button data-s="player" aria-selected="false">By student</button>
+      </div>
+      <div class="spacer row no-print">
+        <button class="btn sm" id="csvTeam">Export team CSV</button>
+        <button class="btn sm" id="csvPlayer">Export student CSV</button>
+      </div>
+    </div>
+    <div class="scroll"><div id="standBody"></div></div>
+  </div>
+</section>
+
+<!-- ================= HISTORY ================= -->
+<section class="view" id="view-history">
+  <div class="card">
+    <div class="card-h">
+      <h2>Game history</h2><span class="pill" id="histPill"></span>
+      <div class="spacer row no-print">
+        <input type="text" id="histSearch" placeholder="Filter by student or team…" style="min-width:180px">
+        <button class="btn sm" id="histCsv">Export CSV</button>
+      </div>
+    </div>
+    <div class="scroll" style="max-height:640px"><div id="histBody"></div></div>
+  </div>
+</section>
+
+<!-- ================= PLAYERS ================= -->
+<section class="view" id="view-players">
+  <div class="card">
+    <div class="card-h">
+      <h2>Student tracker</h2>
+      <div class="spacer row no-print">
+        <input type="text" id="playerSearch" placeholder="Search student…" style="min-width:170px">
+      </div>
+    </div>
+    <div class="scroll" style="max-height:640px"><div id="playersBody"></div></div>
+  </div>
+</section>
+
+<!-- ================= SETUP ================= -->
+<section class="view" id="view-setup">
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <div class="card">
+      <div class="card-h"><h2>Format &amp; rules</h2></div>
+      <div class="card-b grid" style="gap:12px">
+        <div class="row">
+          <label class="field">Course / class <input type="text" id="cfgCourse" style="width:150px"></label>
+          <label class="field">Tournament title <input type="text" id="cfgTitle" style="width:200px"></label>
+        </div>
+        <div class="row">
+          <label class="field">Sessions <input type="number" id="cfgSessions" min="1" max="30"></label>
+          <label class="field">Courts <input type="number" id="cfgCourts" min="1" max="6"></label>
+          <label class="field">Match slots / session <input type="number" id="cfgSlots" min="1" max="12"></label>
+          <label class="field">Session length (min) <input type="number" id="cfgMins" min="10" max="240"></label>
+        </div>
+        <div class="row">
+          <label class="field">Games per team tie <input type="number" id="cfgGPT" min="1" max="7"></label>
+          <label class="field">Points to win <input type="number" id="cfgPoints" min="5" max="25"></label>
+          <label class="field">Switch ends at <input type="number" id="cfgSwitch" min="0" max="20"></label>
+          <label class="field">Hard cap <input type="number" id="cfgCap" min="5" max="40"></label>
+        </div>
+        <div class="row">
+          <label class="row small" style="gap:6px"><input type="checkbox" id="cfgStrict"> Never repeat a partnership</label>
+          <label class="row small" style="gap:6px"><input type="checkbox" id="cfgWinBy2"> Must win by 2</label>
+          <label class="field" style="flex-direction:row;align-items:center;gap:6px">League pts per game won <input type="number" id="cfgWinPts" min="1" max="5"></label>
+        </div>
+        <div class="row"><button class="btn primary" id="saveCfg">Save settings</button><span class="small muted" id="capNote"></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Data</h2></div>
+      <div class="card-b grid" style="gap:10px">
+        <p class="small muted" style="margin:0">Everything is stored in this browser only (localStorage). Export a backup after every session — especially if you switch devices.</p>
+        <div class="row">
+          <button class="btn" id="exportJson">⬇ Export backup (JSON)</button>
+          <button class="btn" id="importJson">⬆ Import backup</button>
+          <input type="file" id="fileIn" accept="application/json" hidden>
+        </div>
+        <div class="row">
+          <button class="btn" id="csvGames">Export all games (CSV)</button>
+        </div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:4px 0">
+        <div class="row">
+          <button class="btn danger" id="resetScores">Reset all scores</button>
+          <button class="btn danger" id="resetAll">Reset everything</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Live sync</h2><span class="pill" id="liveState"></span></div>
+      <div class="card-b grid" style="gap:11px">
+        <div id="liveBody"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Share without live sync</h2></div>
+      <div class="card-b grid" style="gap:10px">
+        <p class="small muted" style="margin:0">A snapshot link carries the whole tournament inside it. It never updates, so send a fresh one after each session. Use this only if live sync is unavailable.</p>
+        <div class="row">
+          <button class="btn" id="boardLink">Copy snapshot link</button>
+          <button class="btn" id="boardFile">Download data.json</button>
+        </div>
+        <div id="shareOut" class="small"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>Rules in play</h2></div>
+      <div class="card-b small" style="color:var(--ink-2)">
+        <ul style="margin:0;padding-left:18px;display:grid;gap:6px">
+          <li>Every match is <b>doubles</b> — pairs are drawn from within each team.</li>
+          <li><b>Rally scoring</b>: a point is awarded on every rally, whoever serves.</li>
+          <li>Game to <b id="rPoints">11</b><span id="rBy2">, win by 2</span>, hard cap <b id="rCap">15</b>.</li>
+          <li>Teams <b>switch ends</b> when a side first reaches <b id="rSwitch">6</b>.</li>
+          <li>Serve passes to the other side whenever the receiving side wins the rally.</li>
+          <li id="rRot">Partners rotate: no student is paired with the same teammate twice.</li>
+          <li>Team tie = <b id="rGPT">3</b> doubles games; the team winning most games takes the tie.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ================= SCORING OVERLAY ================= -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-h">
+      <h2 id="ovTitle">Match</h2>
+      <span class="clock" id="ovClock"></span>
+      <button class="btn sm spacer" id="ovClose">Close</button>
+    </div>
+    <div class="sheet-b" id="ovBody"></div>
+  </div>
+</div>
+
+<!-- ================= CONFIRM ================= -->
+<div class="overlay" id="askOverlay">
+  <div class="sheet" style="width:min(420px,100%)">
+    <div class="sheet-b">
+      <p id="askMsg" style="margin:0 0 16px;font-size:15px;line-height:1.5"></p>
+      <div class="row" id="askBtns"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= EDIT MATCH OVERLAY ================= -->
+<div class="overlay" id="editOverlay">
+  <div class="sheet" style="width:min(520px,100%)">
+    <div class="sheet-h"><h2>Edit match</h2><button class="btn sm spacer" id="edClose">Close</button></div>
+    <div class="sheet-b" id="edBody"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   PED013 Pickleball Class Tournament Manager
+   Single file. No dependencies. Data lives in localStorage.
+   ============================================================ */
+
+const KEY = "ped013-pickleball-v1";
+
+/* ============================================================
+   LIVE SYNC  (Firebase)
+   All reading and writing goes through window.PJ in db.js. Who is
+   allowed to write is decided by the Firestore security rules, not
+   by this page.
+   ============================================================ */
+const slugOk=x=>/^[a-z0-9][a-z0-9-]{2,63}$/.test(x||"");
+function defaultSlug(){
+  const c=(window.PJ_CONFIG||{});
+  let v=null;
+  try{ v=localStorage.getItem("pj-slug"); }catch(e){}
+  return (slugOk(v)&&v) || c.defaultSlug || "class";
+}
+
+const ROSTER = [
+"Abdulrahim, Jehaida Guialudin","Salac, Gian Carlo Rivera","Cabanayan, Trisha De Vera",
+"Ramos, Cliff Ivan Meãoza","Menchavez, Diane Nicole Diama","Fuentes, John Faith Ocampo",
+"Pungyan, Krystel Bilan","Omamalin, Christine Fabian","Gaffur, Alnor Imam",
+"Macabenta, Hanniel Arcamo","Pasaol, Shyver Jave Crispino","Decampong, Nailah Dica",
+"Pliego, Edrik Villar","Diaz, Kzer Arn Fontanilla","Zapanta, Rainy Jeen N/a",
+"Cañas, Ericka Gumapac","Maata, Angeline Ortiz","Lumogdang, Mariz Anica Doronila",
+"Merca, Jervi Christian Villanueva","Prieto, Jun Rizaldy Canoy","Bornillo, Frances Rha Lusterio",
+"Verdeflor, Hannah Grace Hemoros","Encio, Irish Vienne Almuete","Saraom, Brandon Yuval Tomon",
+"Borbon, Amanda Grace Dino","Loping, Peter Jun Salva","Amora, Blair Jantrick Rain Arcebes",
+"Sanchez, Zenith Barcelona","Deniega, Gabriel Clyde Bernal","Majani, Ayeza Chloe Aguhar",
+"Magon, Kyle Alexa Bagus","Villasenda, Nina Ricci Lubaton","Musa Jr., Diether Bonn Ular",
+"Jagunos, John Renie Mistula","Bangcaya, Godwin Kenneth Lumibao","Ozoa, Khian Kylle Yata",
+"Nudos, Sabrina Carião","Galuno, James Frederick Garcia","Lara, Raikka Zandreah Moranos",
+"Binas, Adrian Dillo","Calamba, Anikka Monique Silagan","Pepito, Kricela Morano",
+"Geolaga, Venzryn Oca"
+];
+
+const PALETTE = ["#4f7a28","#1f6f8b","#9a4f1e","#6b4c9a","#a8324a","#2f7d5f","#8a6a12","#3b5bad","#7a2f6e","#4a6b1f","#b0632a","#2b6f72"];
+
+/* ---------- tiny helpers ---------- */
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+const uid = p => p+"_"+Math.random().toString(36).slice(2,9);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pk = (a,b)=> [a,b].sort().join("|");
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function askChoice(msg, opts){
+  return new Promise(res=>{
+    const ov=$("#askOverlay"); if(!ov) return res(null);
+    $("#askMsg").textContent=msg;
+    const row=$("#askBtns");
+    row.innerHTML=opts.map((o,i)=>
+      `<button class="btn ${o.primary?"primary":""}" data-ci="${i}"${i===1?' style="margin-left:auto"':""}>${esc(o.label)}</button>`).join("");
+    ov.classList.add("open");
+    const done=v=>{ ov.classList.remove("open"); row.onclick=null; ov._cancel=null; res(v); };
+    row.onclick=e=>{ const b=e.target.closest("[data-ci]"); if(b) done(opts[+b.dataset.ci].value); };
+    ov._cancel=()=>done(opts[0].value);
+  });
+}
+const ask=(msg,okLabel)=>askChoice(msg,
+  [{label:"Cancel",value:false},{label:okLabel||"Continue",value:true,primary:true}]).then(v=>v===true);
+function toast(msg){
+  let t=$("#toast");
+  if(!t){t=document.createElement("div");t.id="toast";
+    t.style.cssText="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;z-index:90;box-shadow:var(--shadow);transition:opacity .25s";
+    document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity="1";clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity="0",2200);
+}
+
+/* ---------- name parsing ---------- */
+function parseName(raw){
+  const i = raw.indexOf(",");
+  const last = (i<0? raw : raw.slice(0,i)).trim();
+  const rest = (i<0? "" : raw.slice(i+1)).trim();
+  const toks = rest.split(/\s+/).filter(Boolean);
+  let middle = "";
+  if(toks.length>1) middle = toks.pop();
+  const given = toks.join(" ") || rest;
+  return {last, given, middle, formal:`${last}, ${rest}`.trim()};
+}
+
+/* ---------- state ---------- */
+const DEFAULT_META = {
+  course:"PED013", title:"Pickleball Class Tournament",
+  sessions:8, courts:2, slotsPerSession:4, sessionMins:60,
+  gamesPerTie:3, pointsTo:11, winBy2:true, hardCap:15, switchAt:6, winPts:2,
+  strictPairs:true
+};
+
+let S = load();
+
+function seed(){
+  const players = ROSTER.map((raw,i)=>{
+    const n = parseName(raw);
+    return {id:"p"+String(i+1).padStart(2,"0"), raw, last:n.last, given:n.given, middle:n.middle, teamId:null};
+  });
+  return {meta:{...DEFAULT_META}, players, teams:[], games:[], attendance:{},
+          cloud:{slug:null,on:false}, ui:{session:1, stand:"team"}};
+}
+function load(){
+  try{
+    const r = JSON.parse(localStorage.getItem(KEY));
+    if(r && r.players && r.players.length){ r.meta = {...DEFAULT_META, ...r.meta};
+      r.ui = r.ui||{session:1,stand:"team"}; r.attendance = r.attendance||{};
+      r.cloud = r.cloud||{slug:null,on:false};
+      (r.games||[]).forEach(g=>{ g.subs=g.subs||[]; if(g.walkover===undefined) g.walkover=null;
+        if(g.duty===undefined) g.duty=null; });
+      return r; }
+  }catch(e){}
+  return seed();
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast("Storage full — export a backup"); }
+  if(typeof schedulePush==="function") schedulePush();
+}
+
+/* ---------- publishing ---------- */
+let PUSH_T=null;
+const PUSH={busy:false,last:null,err:null,pending:false};
+function schedulePush(){
+  if(!S.cloud||!S.cloud.on||!S.cloud.slug) return;
+  PUSH.pending=true;
+  clearTimeout(PUSH_T); PUSH_T=setTimeout(pushNow,1000);
+  if(typeof renderCloud==="function") renderCloud();
+}
+async function pushNow(){
+  if(!S.cloud||!S.cloud.on||!S.cloud.slug) return;
+  if(!window.PJ||!PJ.isAdmin()){ PUSH.err="Not signed in as the teacher."; renderCloud(); return; }
+  if(PUSH.busy){ clearTimeout(PUSH_T); PUSH_T=setTimeout(pushNow,1000); return; }
+  const pay=boardPayload();
+  if(pay.err){ PUSH.err=pay.err; PUSH.pending=false; renderCloud(); return; }
+  PUSH.busy=true; renderCloud();
+  try{
+    await PJ.saveTournament(S.cloud.slug, pay.text, S.meta.course);
+    await PJ.saveAdminState(S.cloud.slug, JSON.stringify(S));
+    PUSH.last=Date.now(); PUSH.err=null; PUSH.pending=false;
+  }catch(e){
+    PUSH.err=PJ.explain(e);
+    clearTimeout(PUSH_T); PUSH_T=setTimeout(pushNow,15000);
+  }
+  PUSH.busy=false; renderCloud();
+}
+/* Signing in on a fresh device: pull the teacher's working copy back. */
+async function restoreFromCloud(){
+  if(!window.PJ||!PJ.isAdmin()) return false;
+  const slug=defaultSlug();
+  try{
+    const raw=await PJ.getAdminState(slug);
+    if(!raw) return false;
+    const d=JSON.parse(raw);
+    if(!d||!d.players||!d.players.length) return false;
+    S={...seed(),...d};
+    S.meta={...DEFAULT_META,...(d.meta||{})};
+    S.cloud={slug:slug,on:true};
+    try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+    return true;
+  }catch(e){ return false; }
+}
+async function enableLive(){
+  if(!S.games.length) return toast("Generate a schedule first");
+  if(!S.cloud.slug) S.cloud.slug=defaultSlug();
+  if(!slugOk(S.cloud.slug)) return toast("Use letters, numbers and hyphens for the class code");
+  S.cloud.on=true;
+  try{ localStorage.setItem(KEY,JSON.stringify(S)); localStorage.setItem("pj-slug",S.cloud.slug); }catch(e){}
+  await pushNow();
+  watchResults();
+  renderAll();
+  toast(PUSH.err?"Could not reach the server":"Live sync on");
+}
+function disableLive(){
+  S.cloud.on=false; clearTimeout(PUSH_T);
+  if(UNWATCH){ try{UNWATCH();}catch(e){} UNWATCH=null; }
+  try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+  renderAll(); toast("Live sync paused");
+}
+const siteBase=()=> location.href.replace(/[^/]*$/,"");
+const liveBoardLink=()=> S.cloud.slug ? siteBase()+"index.html#"+S.cloud.slug : null;
+const liveScorerLink=i=> S.cloud.slug ? siteBase()+"scorer.html#t="+i : null;
+
+const P = id => S.players.find(p=>p.id===id);
+const T = id => S.teams.find(t=>t.id===id);
+const fullName = p => p ? `${p.given} ${p.last}` : "—";
+const shortName = p => p ? `${p.given.split(" ")[0]} ${p.last}` : "—";
+const teamName = id => (T(id)||{}).name || "—";
+const teamColor = id => (T(id)||{}).color || "#777";
+
+/* ============================================================
+   TEAMS
+   ============================================================ */
+function buildTeams(n){
+  const keep = S.teams.slice(0,n);
+  for(let i=keep.length;i<n;i++) keep.push({id:uid("t"), name:"Team "+(i+1), color:PALETTE[i%PALETTE.length]});
+  const ids = new Set(keep.map(t=>t.id));
+  S.players.forEach(p=>{ if(p.teamId && !ids.has(p.teamId)) p.teamId=null; });
+  S.teams = keep;
+  S.games = S.games.filter(g=>ids.has(g.teamA)&&ids.has(g.teamB));
+  save(); renderTeams(); renderAll();
+}
+function autoAssign(mode){
+  if(!S.teams.length) return toast("Create teams first");
+  const n = S.teams.length;
+  const list = mode==="random" ? shuffle(S.players) : S.players.slice();
+  list.forEach((p,i)=>{
+    const round = Math.floor(i/n), pos = i%n;
+    const idx = (mode==="snake" && round%2) ? n-1-pos : pos;
+    p.teamId = S.teams[idx].id;
+  });
+  save(); renderTeams(); renderAll(); toast("Teams assigned");
+}
+function renderTeams(){
+  const assigned = S.players.filter(p=>p.teamId).length;
+  $("#assignCount").textContent = `${assigned} / ${S.players.length} assigned`;
+  $("#rosterCount").textContent = `${S.players.length} students`;
+  $("#teamCount").value = S.teams.length || 6;
+
+  $("#teamCards").innerHTML = S.teams.length ? S.teams.map(t=>{
+    const mem = S.players.filter(p=>p.teamId===t.id);
+    return `<div class="team-card">
+      <div class="th" style="background:${t.color}">
+        <span contenteditable="true" data-rename="${t.id}" style="outline:none;flex:1">${esc(t.name)}</span>
+        <span style="opacity:.85;font-weight:600">${mem.length}</span>
+      </div>
+      <ul>${mem.length? mem.map((p,i)=>`<li><span class="n">${i+1}</span>${esc(fullName(p))}</li>`).join("")
+        : `<li class="muted small">no players yet</li>`}</ul>
+    </div>`;
+  }).join("") : `<div class="empty">Set a team count and press <b>Create teams</b>.</div>`;
+
+  $$("[data-rename]").forEach(el=>{
+    el.addEventListener("blur",()=>{
+      const t=T(el.dataset.rename); if(!t) return;
+      t.name = el.textContent.trim()||t.name; save(); renderAll();
+    });
+    el.addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();el.blur();} });
+  });
+  renderRoster();
+}
+function renderRoster(){
+  const q = ($("#rosterSearch").value||"").toLowerCase().trim();
+  const opts = id => `<option value="">— unassigned —</option>`+
+    S.teams.map(t=>`<option value="${t.id}" ${t.id===id?"selected":""}>${esc(t.name)}</option>`).join("");
+  const rows = S.players
+    .map((p,i)=>({p,i}))
+    .filter(({p})=> !q || p.raw.toLowerCase().includes(q))
+    .map(({p,i})=>`<tr class="roster-row">
+      <td class="num muted small">${i+1}</td>
+      <td><b>${esc(p.last)}</b>, ${esc(p.given)} ${p.middle&&p.middle!=="N/a"?`<span class="muted small">${esc(p.middle)}</span>`:""}</td>
+      <td><select class="assign-sel" data-assign="${p.id}">${opts(p.teamId)}</select></td>
+      <td class="no-print"><button class="btn sm ghost" data-delplayer="${p.id}" title="Remove">✕</button></td>
+    </tr>`).join("");
+  $("#rosterTable tbody").innerHTML = rows || `<tr><td colspan="4" class="empty">No match.</td></tr>`;
+}
+
+/* ============================================================
+   SCHEDULE GENERATION
+   ============================================================ */
+function roundRobin(ids){
+  const a = ids.slice();
+  if(a.length%2) a.push(null);
+  const n=a.length, rounds=[];
+  for(let r=0;r<n-1;r++){
+    const pairs=[];
+    for(let i=0;i<n/2;i++){
+      const x=a[i], y=a[n-1-i];
+      if(x&&y) pairs.push(r%2 ? [y,x] : [x,y]);
+    }
+    rounds.push(pairs);
+    a.splice(1,0,a.pop());
+  }
+  return rounds;
+}
+/* ---------- pairing engine ----------
+   A circle-method round robin inside each team lists every possible partnership
+   exactly once, grouped into rounds of mutually disjoint pairs. Each tie draws
+   its pairs from one round, so a student plays at most once per tie and no
+   partnership ever repeats — until a team runs out of distinct pairs, which is
+   what the bypass covers. */
+function teamRounds(ids){
+  const a=shuffle(ids);
+  if(a.length%2) a.push(null);
+  const n=a.length, rounds=[];
+  for(let r=0;r<n-1;r++){
+    const pairs=[];
+    for(let i=0;i<n/2;i++){ const x=a[i], y=a[n-1-i]; if(x&&y) pairs.push([x,y]); }
+    if(pairs.length) rounds.push(shuffle(pairs));
+    a.splice(1,0,a.pop());
+  }
+  return rounds;
+}
+const tiesPerTeam = ()=> Math.max(0, S.teams.length-1);
+
+/* Can every match use a partnership never used before? */
+function pairingCheck(){
+  const nT=tiesPerTeam(), g=S.meta.gamesPerTie;
+  return S.teams.map(t=>{
+    const n=S.players.filter(p=>p.teamId===t.id).length;
+    const need=nT*g, cap=n*(n-1)/2;
+    return {id:t.id, name:t.name, n, need, cap,
+            tooSmall:n<2, ok:n>=2&&need<=cap, onePerTie:g<=Math.floor(n/2)};
+  });
+}
+/* Configurations that satisfy strict rotation AND fit the court capacity. */
+function suggestFix(){
+  const g=S.meta.gamesPerTie, total=S.players.length;
+  const cap=S.meta.sessions*S.meta.slotsPerSession*S.meta.courts, out=[];
+  const feasible=(m,k)=>{
+    const small=Math.floor(total/m);
+    return small>=2 && (m-1)*k <= small*(small-1)/2 && m*(m-1)/2*k <= cap;
+  };
+  // keep the teams as they are, play fewer games per tie
+  for(let k=g-1;k>=1;k--){
+    const nT=tiesPerTeam();
+    const okAll=S.teams.every(t=>{const n=S.players.filter(p=>p.teamId===t.id).length;
+      return n>=2 && nT*k<=n*(n-1)/2;});
+    if(okAll && S.teams.length*(S.teams.length-1)/2*k<=cap){
+      out.push(`keep ${S.teams.length} teams and play ${k} game${k>1?"s":""} per tie`); break;
+    }
+  }
+  // most teams that still works at the current games-per-tie
+  for(let m=10;m>=3;m--){
+    if(!feasible(m,g)) continue;
+    const small=Math.floor(total/m), big=total%m?small+1:small;
+    out.push(`use ${m} teams (${small}${big!==small?"\u2013"+big:""} players each) at ${g} game${g>1?"s":""} per tie`);
+    break;
+  }
+  return out;
+}
+function planTeamPairs(teamId, nTies, g, allowRepeats){
+  const mem=S.players.filter(p=>p.teamId===teamId).map(p=>p.id);
+  const out={pairs:[], repeats:0, distinct:0};
+  if(mem.length<2){ for(let t=0;t<nTies;t++) out.pairs.push([]); return out; }
+  const rounds=teamRounds(mem);
+  const used=rounds.map(r=>r.map(()=>false));
+  const count={}, play={}; mem.forEach(id=>play[id]=0);
+  const take=p=>{
+    const k=pk(p[0],p[1]); count[k]=(count[k]||0)+1;
+    count[k]===1 ? out.distinct++ : out.repeats++;
+    play[p[0]]++; play[p[1]]++;
+  };
+  for(let t=0;t<nTies;t++){
+    const got=[], inTie=new Set();
+    /* Within a round every pair is disjoint, so taking the pairs whose players
+       have played least keeps game counts level across the team. */
+    const sweep=disjointOnly=>{
+      for(let dd=0; dd<rounds.length && got.length<g; dd++){
+        const r=(t+dd)%rounds.length;
+        const cand=rounds[r].map((p,i)=>({p,i}))
+          .filter(x=>!used[r][x.i])
+          .map(x=>({...x, load:play[x.p[0]]+play[x.p[1]], jit:Math.random()}))
+          .sort((x,y)=>x.load-y.load||x.jit-y.jit);
+        for(const c of cand){
+          if(got.length>=g) break;
+          if(disjointOnly && (inTie.has(c.p[0])||inTie.has(c.p[1]))) continue;
+          used[r][c.i]=true; got.push(c.p); take(c.p);
+          inTie.add(c.p[0]); inTie.add(c.p[1]);
+        }
+      }
+    };
+    sweep(true); sweep(false);
+    if(got.length<g && allowRepeats){
+      const all=[]; rounds.forEach(r=>r.forEach(p=>all.push(p)));
+      while(got.length<g){
+        all.sort((x,y)=>(count[pk(x[0],x[1])]||0)-(count[pk(y[0],y[1])]||0)
+                      || (play[x[0]]+play[x[1]])-(play[y[0]]+play[y[1]]));
+        const pick=all.find(p=>!inTie.has(p[0])&&!inTie.has(p[1]))||all[0];
+        got.push(pick); take(pick); inTie.add(pick[0]); inTie.add(pick[1]);
+      }
+    }
+    out.pairs.push(got);
+  }
+  return out;
+}
+
+let PAIR_BLOCK=null;      // set when strict rotation cannot be satisfied
+
+async function generateSchedule(bypass){
+  if(S.teams.length<2) return toast("Create at least 2 teams first");
+  const chk=pairingCheck();
+  const tiny=chk.filter(c=>c.tooSmall);
+  if(tiny.length) return toast(`${tiny[0].name} needs at least 2 players`);
+  const short=chk.filter(c=>!c.ok);
+  const allowRepeats = bypass===true || !S.meta.strictPairs;
+  if(short.length && !allowRepeats){ PAIR_BLOCK=short; renderSchedule(); showView("schedule"); return; }
+  if(S.games.some(g=>g.status!=="scheduled") &&
+     !(await ask("This replaces the current schedule and clears every recorded score.","Replace schedule"))) return;
+  PAIR_BLOCK=null;
+  const nT=tiesPerTeam(), g=S.meta.gamesPerTie, plans={}, idx={};
+  S.teams.forEach(t=>{ plans[t.id]=planTeamPairs(t.id,nT,g,allowRepeats); idx[t.id]=0; });
+  S.games=[];
+  roundRobin(S.teams.map(t=>t.id)).forEach((rnd,ri)=>rnd.forEach(([x,y])=>{
+    const ix=idx[x]++, iy=idx[y]++, tieId=uid("tie");
+    const px=plans[x].pairs[ix]||[], py=plans[y].pairs[iy]||[];
+    for(let k=0;k<g;k++){
+      S.games.push({id:uid("g"),tieId,round:ri+1,gameNo:k+1,teamA:x,teamB:y,
+        a:px[k]||[], b:py[k]||[], sa:0,sb:0,status:"scheduled",server:"A",switched:false,
+        subs:[], walkover:null, needsCover:false, duty:null,
+        log:[],session:null,slot:null,court:null,startedAt:null,endedAt:null});
+    }
+  }));
+  placeGames(); assignDuties(); save(); renderAll();
+  const rep=Object.values(plans).reduce((n,p)=>n+p.repeats,0);
+  toast(`${S.games.length} matches · ${rep?rep+" repeated partnership"+(rep>1?"s":""):"no repeated partnerships"}`);
+}
+async function reshufflePairs(){
+  if(!S.games.length) return toast("Generate a schedule first");
+  if(!(await ask("Redraw every partnership. Scores already recorded are kept, but the pairings change.","Reshuffle"))) return;
+  generateSchedule(!S.meta.strictPairs);
+}
+
+/* ============================================================
+   SCORING / REFEREE DUTY
+   Every match is scored by a team that is not playing in that slot.
+   Duties are spread as evenly as the schedule allows.
+   ============================================================ */
+function assignDuties(){
+  const count={}; S.teams.forEach(t=>count[t.id]=0);
+  const bySlot={};
+  S.games.filter(g=>g.session).forEach(g=>{
+    const k=g.session+"-"+g.slot; (bySlot[k]=bySlot[k]||[]).push(g);
+  });
+  Object.keys(bySlot).sort().forEach(k=>{
+    const gs=bySlot[k].sort((a,b)=>(a.court||0)-(b.court||0));
+    const playing=new Set(); gs.forEach(g=>{playing.add(g.teamA);playing.add(g.teamB);});
+    const used=new Set();
+    gs.forEach(g=>{
+      const free=S.teams.filter(t=>!playing.has(t.id)&&!used.has(t.id))
+                        .sort((x,y)=>count[x.id]-count[y.id]||Math.random()-0.5);
+      if(free.length){ g.duty=free[0].id; used.add(free[0].id); count[free[0].id]++; }
+      else g.duty=null;
+    });
+  });
+}
+const dutyCounts=()=>{
+  const c={}; S.teams.forEach(t=>c[t.id]=0);
+  S.games.forEach(g=>{ if(g.duty&&c[g.duty]!=null) c[g.duty]++; });
+  return c;
+};
+
+/* ============================================================
+   ATTENDANCE, SUBSTITUTION AND WALKOVERS
+   An X on the attendance sheet pulls that student out of every unplayed
+   match in that session and puts an available teammate in their place.
+   Marking them present again puts them back.
+   ============================================================ */
+const isAbsent=(sess,pid)=> !!(S.attendance[sess] && S.attendance[sess][pid]);
+const absentList=sess=>Object.keys(S.attendance[sess]||{});
+
+function scheduledCount(){
+  const c={}; S.players.forEach(p=>c[p.id]=0);
+  S.games.forEach(g=>[...g.a,...g.b].forEach(id=>{ if(c[id]!=null) c[id]++; }));
+  return c;
+}
+function hasPartnered(x,y){
+  return S.games.some(g=>[g.a,g.b].some(pr=>pr.includes(x)&&pr.includes(y)));
+}
+/* A teammate who is here, free in this slot, has played least, and ideally
+   has not partnered the remaining player before. */
+function pickReplacement(g,tid,partner,sess){
+  const busy=new Set();
+  S.games.filter(x=>x.session===g.session&&x.slot===g.slot&&x.id!==g.id)
+         .forEach(x=>[...x.a,...x.b].forEach(id=>busy.add(id)));
+  const inGame=new Set([...g.a,...g.b]);
+  const count=scheduledCount();
+  const cands=S.players.filter(p=>p.teamId===tid && !isAbsent(sess,p.id)
+                               && !inGame.has(p.id) && !busy.has(p.id));
+  if(!cands.length) return null;
+  cands.sort((x,y)=> (hasPartnered(x.id,partner)?1:0)-(hasPartnered(y.id,partner)?1:0)
+                  || (count[x.id]||0)-(count[y.id]||0) || Math.random()-0.5);
+  return cands[0].id;
+}
+function refreshCover(sess){
+  S.games.filter(g=>g.session===sess&&g.status!=="final")
+         .forEach(g=>{ g.needsCover=[...g.a,...g.b].some(id=>isAbsent(sess,id)); });
+}
+function coverAbsence(sess,pid){
+  const r={filled:0,uncovered:0};
+  S.games.filter(g=>g.session===sess&&g.status!=="final").forEach(g=>{
+    ["a","b"].forEach(side=>{
+      const arr=g[side], i=arr.indexOf(pid);
+      if(i<0) return;
+      const tid=side==="a"?g.teamA:g.teamB;
+      const repl=pickReplacement(g,tid,arr[1-i],sess);
+      if(repl){ arr[i]=repl; (g.subs=g.subs||[]).push({side,idx:i,out:pid,in:repl}); r.filled++; }
+      else r.uncovered++;
+    });
+  });
+  refreshCover(sess); save(); return r;
+}
+function revertAbsence(sess,pid){
+  let n=0;
+  S.games.filter(g=>g.session===sess&&g.status!=="final"&&(g.subs||[]).length).forEach(g=>{
+    for(let i=g.subs.length-1;i>=0;i--){
+      const sub=g.subs[i];
+      if(sub.out!==pid) continue;
+      if(g[sub.side][sub.idx]===sub.in){ g[sub.side][sub.idx]=pid; g.subs.splice(i,1); n++; }
+    }
+  });
+  refreshCover(sess); save(); return n;
+}
+async function toggleAbsent(sess,pid){
+  const map=S.attendance[sess]||(S.attendance[sess]={});
+  const nm=fullName(P(pid));
+  if(map[pid]){
+    delete map[pid]; save();
+    const n=revertAbsence(sess,pid); renderAll();
+    toast(n?`${nm} is back in ${n} match${n>1?"es":""}`:`${nm} marked present`);
+  } else {
+    map[pid]=1; save();
+    const r=coverAbsence(sess,pid); renderAll();
+    toast(r.uncovered
+      ? `${nm} out · ${r.filled} covered, ${r.uncovered} need${r.uncovered>1?"":"s"} a walkover`
+      : r.filled ? `${nm} out · ${r.filled} match${r.filled>1?"es":""} covered by teammates`
+      : `${nm} marked absent`);
+  }
+}
+async function walkover(id){
+  const g=S.games.find(x=>x.id===id); if(!g) return;
+  const pick=await askChoice("Which team wins this match by default?",[
+    {label:"Cancel",value:null},
+    {label:teamName(g.teamA),value:"A"},
+    {label:teamName(g.teamB),value:"B",primary:true}]);
+  if(!pick) return;
+  g.walkover=pick; g.status="final"; g.log=[];
+  g.sa = pick==="A"?S.meta.pointsTo:0;
+  g.sb = pick==="B"?S.meta.pointsTo:0;
+  if(!g.startedAt) g.startedAt=Date.now();
+  g.endedAt=Date.now();
+  save(); renderAll();
+  toast(`${teamName(pick==="A"?g.teamA:g.teamB)} win by default`);
+}
+
+/* ---------- partnership / participation report ---------- */
+function pairingReport(){
+  const partner={}, gp={}, sit={};
+  S.players.forEach(p=>{gp[p.id]=0;});
+  S.games.forEach(g=>{
+    [[g.a,g.teamA],[g.b,g.teamB]].forEach(([pr,tid])=>{
+      if(pr.length<2) return;
+      const k=pk(pr[0],pr[1]);
+      partner[k]=(partner[k]||0)+1;
+      pr.forEach(id=>gp[id]=(gp[id]||0)+1);
+    });
+  });
+  const counts=Object.values(partner);
+  const vals=S.players.filter(p=>p.teamId).map(p=>gp[p.id]||0);
+  return {
+    distinct:counts.length,
+    repeated:counts.filter(c=>c>1).length,
+    maxRepeat:counts.length?Math.max(...counts):0,
+    minGames:vals.length?Math.min(...vals):0,
+    maxGames:vals.length?Math.max(...vals):0,
+    benched:S.players.filter(p=>p.teamId&&!gp[p.id]).map(p=>fullName(p)),
+    gp
+  };
+}
+
+function placeGames(){
+  const {sessions,slotsPerSession,courts}=S.meta;
+  const slots=[];
+  for(let s=1;s<=sessions;s++) for(let k=1;k<=slotsPerSession;k++) for(let c=1;c<=courts;c++) slots.push({session:s,slot:k,court:c});
+  const used={}, occ={};
+  S.games.forEach(g=>{g.session=null;g.slot=null;g.court=null;});
+  S.games.forEach(g=>{
+    const ppl=[...g.a,...g.b];
+    for(const sl of slots){
+      const uk=`${sl.session}-${sl.slot}-${sl.court}`;
+      if(used[uk]) continue;
+      const ok=`${sl.session}-${sl.slot}`;
+      const set=occ[ok]||(occ[ok]=new Set());
+      if(ppl.some(x=>set.has(x))) continue;
+      used[uk]=true; ppl.forEach(x=>set.add(x));
+      g.session=sl.session; g.slot=sl.slot; g.court=sl.court; return;
+    }
+  });
+}
+
+/* ============================================================
+   SCHEDULE VIEW
+   ============================================================ */
+function renderSchedule(){
+  const total=S.games.length, placed=S.games.filter(g=>g.session).length;
+  const done=S.games.filter(g=>g.status==="final").length;
+  const cap=S.meta.sessions*S.meta.slotsPerSession*S.meta.courts;
+  $("#schedSummary").textContent = total ? `${total} matches · ${done} played · capacity ${cap}` : "not generated";
+
+  if(PAIR_BLOCK){
+    const fixes=suggestFix();
+    $("#schedWarn").innerHTML=`<div class="banner" style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:6px">Strict rotation is impossible with this setup</div>
+      <div style="font-weight:500;line-height:1.55">
+      ${PAIR_BLOCK.map(c=>`<b>${esc(c.name)}</b> has ${c.n} players, so only ${c.cap} different partnerships exist — but it plays ${c.need} games.`).join("<br>")}
+      ${fixes.length?`<br><br>To keep every partnership unique, ${fixes.join(", or ")}.`:""}
+      </div>
+      <div class="row no-print" style="margin-top:10px">
+        <button class="btn sm" data-bypass="1">Bypass: allow the fewest possible repeats</button>
+      </div></div>`;
+    $("#sessionStrip").innerHTML=""; $("#sessionBody").innerHTML="";
+    return;
+  }
+  $("#schedWarn").innerHTML = (total && placed<total)
+    ? `<div class="banner" style="margin-bottom:12px">⚠ ${total-placed} match${total-placed>1?"es":""} could not fit in ${S.meta.sessions} sessions × ${S.meta.slotsPerSession} slots × ${S.meta.courts} courts (capacity ${cap}). Add a slot per session in Setup, or lower “games per team tie”.</div>`
+    : "";
+
+  if(!total){ $("#sessionStrip").innerHTML=""; $("#sessionBody").innerHTML=`<div class="empty">No schedule yet. Assign teams, then press <b>Generate schedule</b>.</div>`; return; }
+
+  const cur=S.ui.session||1;
+  $("#sessionStrip").innerHTML = Array.from({length:S.meta.sessions},(_,i)=>i+1).map(s=>{
+    const gs=S.games.filter(g=>g.session===s);
+    const f=gs.filter(g=>g.status==="final").length;
+    return `<button data-sess="${s}" aria-selected="${s===cur}">Session ${s} <span class="muted small">${f}/${gs.length}</span></button>`;
+  }).join("") + (placed<total?`<button data-sess="0" aria-selected="${cur===0}">Unscheduled <span class="muted small">${total-placed}</span></button>`:"");
+
+  $("#sessionBody").innerHTML = sessionHTML(cur,true);
+  renderRotation();
+}
+function renderRotation(){
+  const box=$("#rotationBox"); if(!box) return;
+  if(!S.games.length){ box.innerHTML=""; return; }
+  const r=pairingReport();
+  const bad=r.benched.length||r.repeated;
+  box.innerHTML=`<div class="card" style="margin-top:14px">
+    <div class="card-h"><h2>Rotation &amp; participation</h2>
+      <span class="pill ${bad?"":"final"}">${r.repeated?`${r.repeated} partnership${r.repeated>1?"s":""} repeat`:"every partnership unique"}</span></div>
+    <div class="card-b">
+      <div class="row" style="gap:22px;align-items:flex-start">
+        <div><div class="small muted">Distinct partnerships</div><div style="font-size:22px;font-weight:700">${r.distinct}</div></div>
+        <div><div class="small muted">Max times any pair plays together</div><div style="font-size:22px;font-weight:700">${r.maxRepeat}</div></div>
+        <div><div class="small muted">Games per student</div><div style="font-size:22px;font-weight:700">${r.minGames}–${r.maxGames}</div></div>
+        <div><div class="small muted">Students with no game</div><div style="font-size:22px;font-weight:700;color:${r.benched.length?"var(--danger)":"inherit"}">${r.benched.length}</div></div>
+      </div>
+      ${r.benched.length?`<div class="banner" style="margin-top:12px">These students are not in any match: ${r.benched.map(esc).join(", ")}. Assign them to a team, then regenerate.</div>`:""}
+    </div></div>`;
+}
+function playerChip(g,id){
+  const p=P(id); if(!p) return "—";
+  const out=g.session&&isAbsent(g.session,id);
+  const isSub=(g.subs||[]).some(x=>x.in===id);
+  return `<span class="${out?"absent":""}">${esc(shortName(p))}</span>${isSub?`<span class="subtag">SUB</span>`:""}`;
+}
+function sideHTML(g,side){
+  const tid=side==="a"?g.teamA:g.teamB;
+  const ids=side==="a"?g.a:g.b;
+  const mine=side==="a"?g.sa:g.sb, other=side==="a"?g.sb:g.sa;
+  const win=g.status==="final"&&mine>other;
+  const cell = g.status==="final"
+    ? `<div class="sc">${mine}</div>`
+    : `<input class="sc-in" type="text" inputmode="numeric" autocomplete="off" maxlength="5"
+         placeholder="–" data-score="${g.id}" data-side="${side}"
+         aria-label="Score for ${esc(teamName(tid))}">`;
+  return `<div class="side ${win?"win":""}">
+    <span class="dot" style="background:${teamColor(tid)}"></span>
+    <div style="min-width:0"><div class="tname" style="color:${teamColor(tid)}">${esc(teamName(tid))}</div>
+      <div class="names">${ids.length?ids.map(id=>playerChip(g,id)).join(" / "):"—"}</div></div>
+    ${cell}</div>`;
+}
+function scoreBox(g){
+  if(g.status==="final"){
+    const win=g.sa>g.sb?g.teamA:g.teamB, hi=Math.max(g.sa,g.sb), lo=Math.min(g.sa,g.sb);
+    return `<div class="qs-res"><span class="won">WIN</span>
+      <span><b>${esc(teamName(win))}</b> ${g.walkover?"by default":`${hi}–${lo}`}</span>
+      <button class="btn sm ghost no-print" style="margin-left:auto" data-qedit="${g.id}">change</button></div>`;
+  }
+  return `<div class="qs no-print">
+    <button class="btn sm primary" data-qsave="${g.id}">Save score</button>
+    <button class="btn sm" data-wo="${g.id}">Win by default</button>
+    ${g.needsCover?`<span class="hint" style="color:var(--warn);font-weight:700">no cover — short a player</span>`:""}
+  </div>`;
+}
+function matchCard(g,editable){
+  const badge = g.status==="live"?`<span class="pill live">● LIVE</span>`
+              : g.status==="final"?`<span class="pill final">FINAL</span>`
+              : `<span class="pill">Game ${g.gameNo}</span>`;
+  const flag = g.needsCover&&g.status!=="final" ? "cover" : "";
+  return `<div class="gcard ${g.status==="live"?"is-live":""} ${g.status==="final"?"is-final":""} ${flag}" data-open="${g.id}">
+    <div class="row" style="gap:7px;margin-bottom:6px">
+      <span class="court-tag">Court ${g.court||"–"}</span>${badge}
+      ${g.duty?`<span class="pill" title="Scoring and refereeing"><span class="dot" style="background:${teamColor(g.duty)}"></span>${esc(teamName(g.duty))}</span>`:""}
+      ${editable?`<button class="btn sm ghost no-print" style="margin-left:auto" data-edit="${g.id}" title="Edit">✎</button>`:""}
+    </div>
+    ${sideHTML(g,"a")}
+    ${sideHTML(g,"b")}
+    ${scoreBox(g)}
+  </div>`;
+}
+/* "11-2", "11 2", "11:2", "11–2" all parse. */
+function parseScore(txt){
+  const m=String(txt||"").trim().match(/^(\d{1,2})\s*[-–:,.\s]\s*(\d{1,2})$/);
+  return m ? [+m[1], +m[2]] : null;
+}
+async function quickSave(id){
+  const g=S.games.find(x=>x.id===id); if(!g) return;
+  const ia=document.querySelector(`[data-score="${id}"][data-side="a"]`);
+  const ib=document.querySelector(`[data-score="${id}"][data-side="b"]`);
+  let a,b;
+  const pa=parseScore(ia&&ia.value), pb=parseScore(ib&&ib.value);
+  if(pa){ [a,b]=pa; }                    // "11-2" typed into one box still works
+  else if(pb){ a=pb[1]; b=pb[0]; }
+  else { a=parseInt(ia&&ia.value,10); b=parseInt(ib&&ib.value,10); }
+  if(isNaN(a)||isNaN(b)) return toast("Enter a score for both teams");
+  if(a<0||b<0) return toast("Scores cannot be negative");
+  if(a===b) return toast("A doubles game cannot end level");
+  const hi=Math.max(a,b), lo=Math.min(a,b), {pointsTo,winBy2,hardCap}=S.meta;
+  const done = hi>=hardCap || (hi>=pointsTo && (!winBy2 || hi-lo>=2));
+  if(!done && !(await ask(`${a}–${b} does not finish a game to ${pointsTo}${winBy2?" (win by 2)":""}. Record it anyway?`,"Record"))) return;
+  g.sa=a; g.sb=b; g.status="final"; g.walkover=null; g.log=[];
+  if(!g.startedAt) g.startedAt=Date.now();
+  g.endedAt=Date.now();
+  save(); renderAll();
+  toast(`${teamName(a>b?g.teamA:g.teamB)} win ${hi}–${lo}`);
+  focusNextScore();
+}
+/* Jump to the next unplayed match so a whole session can be typed in one go. */
+function focusNextScore(){
+  const view=$(".view.active"); if(!view) return;
+  const next=view.querySelector("[data-score]");
+  if(!next) return;
+  try{ next.focus({preventScroll:true}); }catch(e){ try{ next.focus(); }catch(e2){} }
+  try{ if(next.scrollIntoView) next.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){}
+}
+function sessionHTML(sess,editable){
+  if(sess===0){
+    const gs=S.games.filter(g=>!g.session);
+    return `<div class="court-cols">${gs.map(g=>matchCard(g,editable)).join("")}</div>`;
+  }
+  const gs=S.games.filter(g=>g.session===sess);
+  if(!gs.length) return `<div class="empty">Nothing scheduled in session ${sess}.</div>`;
+  const per=Math.round(S.meta.sessionMins/S.meta.slotsPerSession);
+  const slots=[...new Set(gs.map(g=>g.slot))].sort((a,b)=>a-b);
+  return slots.map(k=>{
+    const start=(k-1)*per, mm=x=>`${String(Math.floor(x/60)).padStart(1,"0")}:${String(x%60).padStart(2,"0")}`;
+    const cards=gs.filter(g=>g.slot===k).sort((a,b)=>a.court-b.court).map(g=>matchCard(g,editable)).join("");
+    return `<div class="slotline">
+      <div class="slot-lab">Slot ${k}<br><span style="font-weight:600;color:var(--ink-3)">+${mm(start)}</span></div>
+      <div class="court-cols">${cards}</div>
+    </div>`;
+  }).join("");
+}
+
+/* ============================================================
+   COURTSIDE
+   ============================================================ */
+function renderCourts(){
+  const sel=$("#courtSession");
+  const cur=S.ui.session||1;
+  sel.innerHTML=Array.from({length:S.meta.sessions},(_,i)=>i+1)
+    .map(s=>`<option value="${s}" ${s===cur?"selected":""}>Session ${s}</option>`).join("");
+  $("#courtBody").innerHTML = S.games.length ? sessionHTML(cur,false)
+    : `<div class="empty">Generate a schedule first.</div>`;
+  const live=S.games.filter(g=>g.status==="live").length;
+  $("#liveHint").textContent = live?`${live} live now`:"tap a match to score";
+}
+
+/* ---------- scoring overlay ---------- */
+let OV=null, ovTimer=null;
+function openScorer(id){
+  const g=S.games.find(x=>x.id===id); if(!g) return;
+  OV=id;
+  if(g.status==="scheduled"){ g.status="live"; g.startedAt=Date.now(); save(); }
+  $("#overlay").classList.add("open");
+  drawScorer();
+  clearInterval(ovTimer); ovTimer=setInterval(tickClock,1000); tickClock();
+}
+function closeScorer(){ $("#overlay").classList.remove("open"); OV=null; clearInterval(ovTimer); save(); renderAll(); }
+function tickClock(){
+  const g=S.games.find(x=>x.id===OV); if(!g) return;
+  const end=g.endedAt||Date.now();
+  if(!g.startedAt){ $("#ovClock").textContent=""; return; }
+  const s=Math.max(0,Math.floor((end-g.startedAt)/1000));
+  $("#ovClock").textContent=`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+}
+function gameOver(g){
+  const {pointsTo,winBy2,hardCap}=S.meta, hi=Math.max(g.sa,g.sb), lo=Math.min(g.sa,g.sb);
+  if(hi>=hardCap) return true;
+  if(hi>=pointsTo && (!winBy2 || hi-lo>=2)) return true;
+  return false;
+}
+function drawScorer(){
+  const g=S.games.find(x=>x.id===OV); if(!g) return;
+  $("#ovTitle").innerHTML=`${esc(teamName(g.teamA))} <span class="muted">vs</span> ${esc(teamName(g.teamB))} <span class="muted small">· S${g.session||"–"} C${g.court||"–"} · G${g.gameNo}</span>`;
+  const side=(k)=>{
+    const tid=k==="A"?g.teamA:g.teamB, ids=k==="A"?g.a:g.b, sc=k==="A"?g.sa:g.sb;
+    return `<div class="spad" style="background:${teamColor(tid)}">
+      ${g.server===k&&g.status==="live"?`<span class="serve">SERVING</span>`:""}
+      <button class="plus" data-pt="${k}" aria-label="Point ${teamName(tid)}"></button>
+      <div class="tn">${esc(teamName(tid))}</div>
+      <div class="pn">${ids.map(i=>esc(fullName(P(i)))).join("<br>")||"—"}</div>
+      <div class="big">${sc}</div>
+    </div>`;
+  };
+  const {pointsTo,winBy2,switchAt}=S.meta;
+  const hi=Math.max(g.sa,g.sb), lo=Math.min(g.sa,g.sb);
+  const atPoint = hi>=pointsTo-1 && (!winBy2 || hi-lo>=1) && !gameOver(g);
+  const needSwitch = switchAt>0 && hi>=switchAt && !g.switched && g.status==="live";
+  $("#ovBody").innerHTML=`
+    <div class="score-pad">${side("A")}${side("B")}</div>
+    ${needSwitch?`<div class="switch-banner">⇄ SWITCH ENDS — a side reached ${switchAt}
+      <button class="btn sm spacer" data-act="switched">Done</button></div>`:""}
+    ${atPoint?`<div class="gamepoint">Game point — ${g.sa>g.sb?esc(teamName(g.teamA)):esc(teamName(g.teamB))}</div>`:""}
+    ${gameOver(g)&&g.status==="live"?`<div class="gamepoint">Game complete — press Finish to record it.</div>`:""}
+    ${g.status==="final"?`<div class="banner" style="background:var(--accent-soft);color:var(--accent);border-color:transparent;margin-top:12px">
+       Final recorded. <button class="btn sm spacer" data-act="reopen">Reopen</button></div>`:""}
+    <div class="ctrl-row">
+      <button class="btn" data-act="undo">↩ Undo point</button>
+      <button class="btn" data-act="serve">Serve: ${g.server}</button>
+      <button class="btn" data-act="minusA">−1 ${esc(teamName(g.teamA))}</button>
+      <button class="btn" data-act="minusB">−1 ${esc(teamName(g.teamB))}</button>
+      <button class="btn primary spacer" data-act="finish" ${g.status==="final"?"disabled":""}>Finish match</button>
+    </div>
+    <p class="small muted" style="margin:12px 0 0">Rally scoring to ${pointsTo}${winBy2?", win by 2":""} · cap ${S.meta.hardCap} · switch at ${switchAt} · tap a colour block to add a point.</p>`;
+}
+function addPoint(k){
+  const g=S.games.find(x=>x.id===OV); if(!g||g.status==="final") return;
+  if(gameOver(g)) return toast("Game is complete — press Finish");
+  g.log.push({k});
+  if(k==="A") g.sa++; else g.sb++;
+  if(g.server!==k) g.server=k;        // side-out: serve passes to the rally winner
+  save(); drawScorer();
+  if(navigator.vibrate) navigator.vibrate(12);
+}
+function undoPoint(){
+  const g=S.games.find(x=>x.id===OV); if(!g) return;
+  const last=g.log.pop(); if(!last) return;
+  if(last.k==="A") g.sa=Math.max(0,g.sa-1); else g.sb=Math.max(0,g.sb-1);
+  const prev=g.log[g.log.length-1]; if(prev) g.server=prev.k;
+  save(); drawScorer();
+}
+async function finishMatch(){
+  const g=S.games.find(x=>x.id===OV); if(!g) return;
+  if(g.sa===g.sb) return toast("A doubles game cannot end level");
+  if(!gameOver(g)){ ask(`Score is ${g.sa}–${g.sb}, short of the target. Record it anyway?`,"Record").then(yes=>{
+      if(!yes) return; g.status="final"; g.endedAt=Date.now(); save(); drawScorer(); renderAll(); toast("Result recorded"); });
+    return; }
+  g.status="final"; g.endedAt=Date.now(); save(); drawScorer(); renderAll(); toast("Result recorded");
+}
+
+/* ---------- edit match ---------- */
+let EDIT=null;
+function openEdit(id){
+  EDIT=id; const g=S.games.find(x=>x.id===id); if(!g) return;
+  const sel=(tid,cur,name)=>{
+    const mem=S.players.filter(p=>p.teamId===tid);
+    const busy=new Set();
+    S.games.filter(x=>x.session===g.session&&x.slot===g.slot&&x.id!==g.id)
+           .forEach(x=>[...x.a,...x.b].forEach(id=>busy.add(id)));
+    return `<select data-ed="${name}" style="width:100%">${mem.map(p=>{
+      const tags=[];
+      if(g.session&&isAbsent(g.session,p.id)) tags.push("absent");
+      if(busy.has(p.id)) tags.push("on the other court");
+      return `<option value="${p.id}" ${p.id===cur?"selected":""}>${esc(fullName(p))}${tags.length?" \u2014 "+tags.join(", "):""}</option>`;
+    }).join("")}</select>`;
+  };
+  $("#edBody").innerHTML=`
+    <div class="grid" style="gap:12px">
+      <div><h3 style="margin-bottom:6px;color:${teamColor(g.teamA)}">${esc(teamName(g.teamA))}</h3>
+        <div class="row">${sel(g.teamA,g.a[0],"a0")}${sel(g.teamA,g.a[1],"a1")}</div></div>
+      <div><h3 style="margin-bottom:6px;color:${teamColor(g.teamB)}">${esc(teamName(g.teamB))}</h3>
+        <div class="row">${sel(g.teamB,g.b[0],"b0")}${sel(g.teamB,g.b[1],"b1")}</div></div>
+      <div class="row">
+        <label class="field" style="flex:1">Scorer &amp; referee
+          <select data-ed="duty" style="width:100%">
+            <option value="">${"\u2014 none \u2014"}</option>
+            ${S.teams.filter(t=>t.id!==g.teamA&&t.id!==g.teamB)
+              .map(t=>`<option value="${t.id}" ${t.id===g.duty?"selected":""}>${esc(t.name)}</option>`).join("")}
+          </select></label>
+      </div>
+      <div class="row">
+        <label class="field">Session <select data-ed="session">${Array.from({length:S.meta.sessions},(_,i)=>i+1).map(s=>`<option ${s===g.session?"selected":""}>${s}</option>`).join("")}</select></label>
+        <label class="field">Slot <select data-ed="slot">${Array.from({length:S.meta.slotsPerSession},(_,i)=>i+1).map(s=>`<option ${s===g.slot?"selected":""}>${s}</option>`).join("")}</select></label>
+        <label class="field">Court <select data-ed="court">${Array.from({length:S.meta.courts},(_,i)=>i+1).map(s=>`<option ${s===g.court?"selected":""}>${s}</option>`).join("")}</select></label>
+      </div>
+      <div class="row"><button class="btn primary" data-ed-act="save">Save match</button>
+        <button class="btn" data-ed-act="reset">Reset score</button>
+        <button class="btn danger spacer" data-ed-act="del">Delete match</button></div>
+    </div>`;
+  $("#editOverlay").classList.add("open");
+}
+function saveEdit(){
+  const g=S.games.find(x=>x.id===EDIT); if(!g) return;
+  const v=n=>$(`[data-ed="${n}"]`).value;
+  const a=[v("a0"),v("a1")], b=[v("b0"),v("b1")];
+  if(a[0]===a[1]||b[0]===b[1]) return toast("A pair needs two different students");
+  g.a=a; g.b=b; g.session=+v("session"); g.slot=+v("slot"); g.court=+v("court"); g.duty=v("duty")||null;
+  save(); $("#editOverlay").classList.remove("open"); renderAll(); toast("Match updated");
+}
+
+/* ============================================================
+   ATTENDANCE VIEW
+   ============================================================ */
+function renderAttendance(){
+  const sel=$("#attSession"); if(!sel) return;
+  const cur=S.ui.attSession||1;
+  sel.innerHTML=Array.from({length:S.meta.sessions},(_,i)=>i+1)
+    .map(n=>`<option value="${n}" ${n===cur?"selected":""}>Session ${n}</option>`).join("");
+  const out=absentList(cur).length;
+  $("#attPill").textContent=`${S.players.length-out} present · ${out} absent`;
+
+  const sched=scheduledCount();
+  const played={}; S.players.forEach(p=>played[p.id]=0);
+  S.games.filter(g=>g.status==="final"&&!g.walkover)
+    .forEach(g=>[...g.a,...g.b].forEach(id=>{ if(played[id]!=null) played[id]++; }));
+
+  $("#attGrid").innerHTML = S.teams.length ? S.teams.map(t=>{
+    const mem=S.players.filter(p=>p.teamId===t.id);
+    return `<div class="att-team">
+      <div class="th" style="background:${t.color}">${esc(t.name)}
+        <span style="margin-left:auto;font-weight:600">${mem.filter(p=>!isAbsent(cur,p.id)).length}/${mem.length}</span></div>
+      ${mem.map(p=>{
+        const off=isAbsent(cur,p.id);
+        return `<div class="att-row ${off?"out":""}">
+          <button class="xbtn" data-att="${p.id}" aria-pressed="${off}" title="${off?"Mark present":"Mark absent"}">✕</button>
+          <span class="${off?"absent":""}">${esc(p.given)} <b>${esc(p.last)}</b></span>
+          <span class="gcount">${played[p.id]} played · ${sched[p.id]} scheduled</span>
+        </div>`;}).join("")}
+    </div>`;
+  }).join("") : `<div class="empty">Create teams first.</div>`;
+
+  const gaps=S.games.filter(g=>g.session===cur&&g.status!=="final"&&g.needsCover);
+  $("#attImpact").innerHTML = gaps.length ? `<div class="card"><div class="card-h"><h2>Matches short a player</h2>
+      <span class="pill" style="background:var(--warn-soft);color:var(--warn)">${gaps.length}</span></div>
+    <div class="card-b"><p class="small muted" style="margin:0 0 12px">No teammate was free to cover these. Award the match by default, or edit it by hand from the Schedule tab.</p>
+      <div class="court-cols">${gaps.map(g=>matchCard(g,true)).join("")}</div></div></div>` : "";
+}
+
+/* ============================================================
+   DUTIES VIEW
+   ============================================================ */
+function renderDuties(){
+  const sel=$("#dutySession"); if(!sel) return;
+  const cur=S.ui.dutySession||1;
+  sel.innerHTML=Array.from({length:S.meta.sessions},(_,i)=>i+1)
+    .map(n=>`<option value="${n}" ${n===cur?"selected":""}>Session ${n}</option>`).join("");
+  const live=S.cloud&&S.cloud.on&&S.cloud.slug;
+  const note=$("#dutyLinkNote");
+  if(note) note.innerHTML = live
+    ? "Send a team their link and they get a scoring page showing only the matches they referee. Scores they save arrive in <b>Results waiting</b> below within seconds."
+    : "Send a team their link and they get a scoring page showing only the matches they referee. Without live sync they finish by reading you a short code. <b>Turn on live sync in Setup</b> and their results arrive here by themselves.";
+  const pp=$("#pendPill");
+  if(pp) pp.textContent = live ? (PENDING.length?`${PENDING.length} waiting`:"none waiting") : "live sync off";
+  const dc=dutyCounts(), vals=Object.values(dc);
+  $("#dutyPill").textContent=S.games.length&&vals.length
+    ? `${vals.reduce((a,b)=>a+b,0)} assigned · ${Math.min(...vals)}–${Math.max(...vals)} per team`
+    : "no schedule yet";
+
+  const gs=S.games.filter(g=>g.session===cur).sort((a,b)=>a.slot-b.slot||a.court-b.court);
+  const slots=[...new Set(gs.map(g=>g.slot))];
+  $("#dutyBody").innerHTML = gs.length ? slots.map(k=>{
+    const row=gs.filter(g=>g.slot===k);
+    const playing=new Set(); row.forEach(g=>{playing.add(g.teamA);playing.add(g.teamB);});
+    return `<div class="slotline">
+      <div class="slot-lab">Slot ${k}</div>
+      <div class="court-cols">${row.map(g=>`
+        <div class="gcard">
+          <div class="row" style="gap:7px;margin-bottom:8px">
+            <span class="court-tag">Court ${g.court}</span>
+            ${g.status==="final"?`<span class="pill final">PLAYED</span>`:""}
+          </div>
+          <div class="small" style="margin-bottom:9px">
+            <span class="dot" style="background:${teamColor(g.teamA)}"></span> ${esc(teamName(g.teamA))}
+            <span class="muted"> v </span>
+            <span class="dot" style="background:${teamColor(g.teamB)}"></span> ${esc(teamName(g.teamB))}
+          </div>
+          <label class="field">Scorer &amp; referee
+            <select data-duty="${g.id}">
+              <option value="">— none —</option>
+              ${S.teams.filter(t=>!playing.has(t.id))
+                .map(t=>`<option value="${t.id}" ${t.id===g.duty?"selected":""}>${esc(t.name)} (${dc[t.id]})</option>`).join("")}
+            </select></label>
+        </div>`).join("")}</div></div>`;
+  }).join("") : `<div class="empty">Generate a schedule first.</div>`;
+
+  $("#dutyLinks").innerHTML = S.teams.length ? S.teams.map(t=>`
+    <div class="team-card">
+      <div class="th" style="background:${t.color}">${esc(t.name)}
+        <span style="margin-left:auto;font-weight:600">${dc[t.id]} matches</span></div>
+      <div style="padding:10px 12px"><button class="btn sm" data-slink="${t.id}">Copy scorer link</button></div>
+    </div>`).join("") : `<div class="empty">Create teams first.</div>`;
+}
+
+/* ============================================================
+   GAME HISTORY
+   ============================================================ */
+function renderHistory(){
+  const box=$("#histBody"); if(!box) return;
+  const q=($("#histSearch").value||"").toLowerCase().trim();
+  const done=S.games.filter(g=>g.status==="final")
+    .sort((x,y)=>(y.endedAt||0)-(x.endedAt||0)
+              ||(y.session||0)-(x.session||0)||(y.slot||0)-(x.slot||0));
+  $("#histPill").textContent=`${done.length} of ${S.games.length} played`;
+  const match=g=>{
+    if(!q) return true;
+    const hay=[teamName(g.teamA),teamName(g.teamB),
+      ...g.a.map(i=>fullName(P(i))),...g.b.map(i=>fullName(P(i)))].join(" ").toLowerCase();
+    return hay.includes(q);
+  };
+  const rows=done.filter(match);
+  box.innerHTML = rows.length ? `<table>
+    <thead><tr><th>When</th><th>Winner</th><th>Score</th><th>Beat</th><th>Note</th></tr></thead>
+    <tbody>${rows.map(g=>{
+      const aw=g.sa>g.sb;
+      const wT=aw?g.teamA:g.teamB, lT=aw?g.teamB:g.teamA;
+      const wP=(aw?g.a:g.b).map(i=>shortName(P(i))).join(" & ");
+      const lP=(aw?g.b:g.a).map(i=>shortName(P(i))).join(" & ");
+      const when=g.endedAt?new Date(g.endedAt):null;
+      const subs=(g.subs||[]).length;
+      return `<tr>
+        <td class="muted small">S${g.session||"–"} · C${g.court||"–"}${when?`<br>${when.toLocaleDateString([], {month:"short",day:"numeric"})} ${when.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}`:""}</td>
+        <td><span class="dot" style="background:${teamColor(wT)};margin-right:6px"></span><b>${esc(wP)}</b>
+            <div class="small muted">${esc(teamName(wT))}</div></td>
+        <td class="num"><b>${g.walkover?"W/O":`${Math.max(g.sa,g.sb)}–${Math.min(g.sa,g.sb)}`}</b></td>
+        <td>${esc(lP)}<div class="small muted">${esc(teamName(lT))}</div></td>
+        <td class="small muted">${g.walkover?"won by default":""}${subs?`${g.walkover?" · ":""}${subs} substitution${subs>1?"s":""}`:""}</td>
+      </tr>`;}).join("")}</tbody></table>`
+    : `<div class="empty">${done.length?"Nothing matches that filter.":"No games played yet."}</div>`;
+}
+
+/* ============================================================
+   STANDINGS
+   ============================================================ */
+function computeStats(){
+  const TS={}, PS={};
+  S.teams.forEach(t=>TS[t.id]={id:t.id,name:t.name,color:t.color,gp:0,w:0,l:0,pf:0,pa:0,pts:0,tw:0,tl:0});
+  S.players.forEach(p=>PS[p.id]={id:p.id,gp:0,w:0,l:0,pf:0,pa:0});
+  const ties={};
+  S.teams.forEach(t=>TS[t.id].form=[]);
+  S.players.forEach(p=>PS[p.id].form=[]);
+  S.games.filter(g=>g.status==="final")
+   .sort((x,y)=>(x.session||99)-(y.session||99)||(x.slot||0)-(y.slot||0)||(x.court||0)-(y.court||0))
+   .forEach(g=>{
+    const aw=g.sa>g.sb;
+    const A=TS[g.teamA], B=TS[g.teamB];
+    if(A){A.gp++;A.pf+=g.sa;A.pa+=g.sb;aw?(A.w++,A.pts+=S.meta.winPts):A.l++;A.form.push(aw);}
+    if(B){B.gp++;B.pf+=g.sb;B.pa+=g.sa;aw?B.l++:(B.w++,B.pts+=S.meta.winPts);B.form.push(!aw);}
+    /* A walkover counts for the teams, and for the pair that turned up.
+       The side that could not field a pair gets no personal record. */
+    if(!g.walkover||g.walkover==="A")
+      g.a.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sa;s.pa+=g.sb;aw?s.w++:s.l++;s.form.push(aw);});
+    if(!g.walkover||g.walkover==="B")
+      g.b.forEach(id=>{const s=PS[id];if(!s)return;s.gp++;s.pf+=g.sb;s.pa+=g.sa;aw?s.l++:s.w++;s.form.push(!aw);});
+    const t=ties[g.tieId]||(ties[g.tieId]={a:g.teamA,b:g.teamB,aw:0,bw:0,ap:0,bp:0,n:0});
+    t.n++; t.ap+=g.sa; t.bp+=g.sb; aw?t.aw++:t.bw++;
+  });
+  const totalPerTie=S.meta.gamesPerTie;
+  /* Ties are won or lost, never drawn: an equal split is settled on
+     points scored across the tie. */
+  Object.values(ties).forEach(t=>{
+    if(t.n<totalPerTie) return;            // tie still in progress
+    const A=TS[t.a],B=TS[t.b]; if(!A||!B) return;
+    const aWins = t.aw>t.bw || (t.aw===t.bw && t.ap>t.bp);
+    const bWins = t.bw>t.aw || (t.bw===t.aw && t.bp>t.ap);
+    if(aWins){A.tw++;B.tl++;} else if(bWins){B.tw++;A.tl++;}
+  });
+  return {TS,PS};
+}
+const formHTML=f=>`<span class="form">${(f||[]).slice(-5).map(w=>`<i class="${w?"w":""}">${w?"W":"L"}</i>`).join("")}</span>`;
+const medal=i=>`<span class="medal ${i<3?"m"+(i+1):""}">${i+1}</span>`;
+
+function renderPodium(){
+  const box=$("#podium"); if(!box) return;
+  const {TS,PS}=computeStats();
+  const teams=Object.values(TS).filter(t=>t.gp)
+    .sort((a,b)=>b.pts-a.pts||(b.pf-b.pa)-(a.pf-a.pa)||b.pf-a.pf).slice(0,3);
+  const players=S.players.map(p=>({p,s:PS[p.id]})).filter(x=>x.s.gp)
+    .sort((a,b)=>b.s.w-a.s.w||(b.s.pf-b.s.pa)-(a.s.pf-a.s.pa)||b.s.gp-a.s.gp).slice(0,3);
+  if(!teams.length){ box.innerHTML=""; return; }
+  box.innerHTML=`
+    <div class="card" style="margin:0">
+      <div class="card-h"><h2>Team leaders</h2><span class="pill">by league points</span></div>
+      <div class="card-b" style="padding-top:4px;padding-bottom:6px">
+        ${teams.map((t,i)=>`<div class="lead">${medal(i)}
+          <span class="dot" style="background:${t.color}"></span>
+          <div class="nm"><b>${esc(t.name)}</b>
+            <span>${t.tw}-${t.tl} ties · ${t.w}W-${t.l}L · ${t.pf-t.pa>0?"+":""}${t.pf-t.pa} diff · ${formHTML(t.form)}</span></div>
+          <div class="big">${t.pts}</div></div>`).join("")}
+      </div></div>
+    <div class="card" style="margin:0">
+      <div class="card-h"><h2>Student leaders</h2><span class="pill">by games won</span></div>
+      <div class="card-b" style="padding-top:4px;padding-bottom:6px">
+        ${players.map((x,i)=>`<div class="lead">${medal(i)}
+          ${x.p.teamId?`<span class="dot" style="background:${teamColor(x.p.teamId)}"></span>`:""}
+          <div class="nm"><b>${esc(fullName(x.p))}</b>
+            <span>${esc(teamName(x.p.teamId))} · ${x.s.gp} played · ${formHTML(x.s.form)}</span></div>
+          <div class="big">${x.s.w}<span class="small muted" style="font-weight:600">W</span></div></div>`).join("")}
+      </div></div>`;
+}
+
+function renderStandings(){
+  renderPodium();
+  const {TS,PS}=computeStats();
+  const mode=S.ui.stand||"team";
+  $$("#standSeg button").forEach(b=>b.setAttribute("aria-selected",b.dataset.s===mode));
+  if(mode==="team"){
+    const rows=Object.values(TS).sort((x,y)=> y.pts-x.pts || (y.pf-y.pa)-(x.pf-x.pa) || y.pf-x.pf);
+    $("#standBody").innerHTML = rows.length? `<table>
+      <thead><tr><th class="num">Rank</th><th>Team</th><th class="num">Ties W-L</th><th class="num">GP</th><th class="num">W</th><th class="num">L</th>
+      <th class="num">PF</th><th class="num">PA</th><th class="num">Diff</th><th class="num">Pts</th><th>Form</th><th>Win %</th></tr></thead>
+      <tbody>${rows.map((r,i)=>{
+        const d=r.pf-r.pa, wp=r.gp?Math.round(r.w/r.gp*100):0;
+        return `<tr><td class="num">${medal(i)}</td>
+          <td><span class="dot" style="background:${r.color};margin-right:7px"></span><b>${esc(r.name)}</b></td>
+          <td class="num">${r.tw}-${r.tl}</td>
+          <td class="num">${r.gp}</td><td class="num">${r.w}</td><td class="num">${r.l}</td>
+          <td class="num">${r.pf}</td><td class="num">${r.pa}</td><td class="num">${d>0?"+":""}${d}</td>
+          <td class="num"><b>${r.pts}</b></td>
+          <td>${formHTML(r.form)}</td>
+          <td><div class="row" style="gap:7px"><div class="bar" style="flex:1"><i style="width:${wp}%"></i></div><span class="small muted">${wp}%</span></div></td></tr>`;
+      }).join("")}</tbody></table>` : `<div class="empty">No results yet.</div>`;
+  } else {
+    const rows=S.players.map(p=>({p,s:PS[p.id]}))
+      .sort((x,y)=> (y.s.gp>0)-(x.s.gp>0) || y.s.w-x.s.w || (y.s.pf-y.s.pa)-(x.s.pf-x.s.pa) || x.p.last.localeCompare(y.p.last));
+    $("#standBody").innerHTML = `<table>
+      <thead><tr><th class="num">Rank</th><th>Student</th><th>Team</th><th class="num">GP</th><th class="num">W</th><th class="num">L</th>
+      <th class="num">PF</th><th class="num">PA</th><th class="num">Diff</th><th class="num">PPG</th><th>Form</th><th>Win %</th></tr></thead>
+      <tbody>${rows.map((r,i)=>{
+        const s=r.s,d=s.pf-s.pa,wp=s.gp?Math.round(s.w/s.gp*100):0;
+        return `<tr><td class="num">${s.gp?medal(i):`<span class="muted">–</span>`}</td>
+          <td><b>${esc(r.p.last)}</b>, ${esc(r.p.given)}</td>
+          <td>${r.p.teamId?`<span class="dot" style="background:${teamColor(r.p.teamId)};margin-right:6px"></span>${esc(teamName(r.p.teamId))}`:`<span class="muted">—</span>`}</td>
+          <td class="num">${s.gp}</td><td class="num">${s.w}</td><td class="num">${s.l}</td>
+          <td class="num">${s.pf}</td><td class="num">${s.pa}</td><td class="num">${d>0?"+":""}${d}</td>
+          <td class="num">${s.gp?(s.pf/s.gp).toFixed(1):"–"}</td>
+          <td>${formHTML(s.form)}</td>
+          <td><div class="row" style="gap:7px"><div class="bar" style="flex:1"><i style="width:${wp}%"></i></div><span class="small muted">${wp}%</span></div></td></tr>`;
+      }).join("")}</tbody></table>`;
+  }
+}
+
+/* ============================================================
+   PLAYER TRACKER
+   ============================================================ */
+function renderPlayers(){
+  const q=($("#playerSearch").value||"").toLowerCase().trim();
+  const {PS}=computeStats();
+  const list=S.players.filter(p=>!q||p.raw.toLowerCase().includes(q))
+    .sort((a,b)=>a.last.localeCompare(b.last));
+  $("#playersBody").innerHTML = list.map(p=>{
+    const s=PS[p.id];
+    const games=S.games.filter(g=>g.a.includes(p.id)||g.b.includes(p.id))
+      .sort((x,y)=>(x.session||99)-(y.session||99)||(x.slot||0)-(y.slot||0));
+    const rows=games.map(g=>{
+      const mine=g.a.includes(p.id)?"A":"B";
+      const partner=(mine==="A"?g.a:g.b).find(i=>i!==p.id);
+      const opp=(mine==="A"?g.b:g.a).map(i=>shortName(P(i))).join(" / ");
+      const my=mine==="A"?g.sa:g.sb, th=mine==="A"?g.sb:g.sa;
+      const res=g.status!=="final"?`<span class="muted">—</span>`:(my>th?`<b style="color:var(--accent)">W</b>`:`<span style="color:var(--ink-3)">L</span>`);
+      return `<tr><td class="muted small">S${g.session||"–"} · C${g.court||"–"}</td>
+        <td>${esc(shortName(P(partner)))}</td>
+        <td class="muted">vs ${esc(opp)} <span class="small">(${esc(teamName(mine==="A"?g.teamB:g.teamA))})</span></td>
+        <td class="num">${g.status==="final"?`${my}–${th}`:`<span class="muted">${g.status==="live"?"live":"upcoming"}</span>`}</td>
+        <td class="num">${res}</td></tr>`;
+    }).join("");
+    return `<details style="border-bottom:1px solid var(--line)">
+      <summary style="padding:11px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;list-style:none">
+        ${p.teamId?`<span class="dot" style="background:${teamColor(p.teamId)}"></span>`:`<span class="dot" style="background:var(--ink-3)"></span>`}
+        <b>${esc(p.last)}</b>, ${esc(p.given)}
+        <span class="spacer small muted">${esc(teamName(p.teamId))} · ${s.gp} GP · ${s.w}W-${s.l}L · ${s.pf-s.pa>0?"+":""}${s.pf-s.pa}</span>
+      </summary>
+      <div style="padding:0 16px 14px">
+        ${games.length?`<table><thead><tr><th>When</th><th>Partner</th><th>Opponents</th><th class="num">Score</th><th class="num">Res</th></tr></thead><tbody>${rows}</tbody></table>`
+        :`<p class="small muted">No matches scheduled yet.</p>`}
+      </div></details>`;
+  }).join("") || `<div class="empty">No match.</div>`;
+}
+
+/* ============================================================
+   EXPORTS
+   ============================================================ */
+function dl(name, text, type="text/plain"){
+  const b=new Blob([text],{type}); const u=URL.createObjectURL(b);
+  const a=document.createElement("a"); a.href=u; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),1500);
+}
+const csvCell = v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g,'""')}"` : String(v);
+const csv = rows => rows.map(r=>r.map(csvCell).join(",")).join("\n");
+const stamp = ()=> new Date().toISOString().slice(0,10);
+
+function exportTeamCSV(){
+  const {TS}=computeStats();
+  const rows=[["Rank","Team","TiesW","TiesL","GamesPlayed","Won","Lost","PointsFor","PointsAgainst","Diff","LeaguePts","WinPct"]];
+  Object.values(TS).sort((x,y)=>y.pts-x.pts||(y.pf-y.pa)-(x.pf-x.pa))
+    .forEach((r,i)=>rows.push([i+1,r.name,r.tw,r.tl,r.gp,r.w,r.l,r.pf,r.pa,r.pf-r.pa,r.pts,r.gp?(r.w/r.gp*100).toFixed(1):""]));
+  dl(`${S.meta.course}_team_standings_${stamp()}.csv`,csv(rows),"text/csv");
+}
+function exportPlayerCSV(){
+  const {PS}=computeStats();
+  const rows=[["Last","First","Middle","Team","GamesPlayed","Won","Lost","PointsFor","PointsAgainst","Diff","PtsPerGame","WinPct"]];
+  S.players.slice().sort((a,b)=>a.last.localeCompare(b.last)).forEach(p=>{
+    const s=PS[p.id];
+    rows.push([p.last,p.given,p.middle,teamName(p.teamId),s.gp,s.w,s.l,s.pf,s.pa,s.pf-s.pa,
+      s.gp?(s.pf/s.gp).toFixed(2):"", s.gp?(s.w/s.gp*100).toFixed(1):""]);
+  });
+  dl(`${S.meta.course}_student_stats_${stamp()}.csv`,csv(rows),"text/csv");
+}
+function exportGamesCSV(){
+  const rows=[["Session","Slot","Court","Round","TeamA","A_Player1","A_Player2","ScoreA","TeamB","B_Player1","B_Player2","ScoreB","Status","Winner","WonByDefault","Substitutions"]];
+  S.games.slice().sort((a,b)=>(a.session||99)-(b.session||99)||(a.slot||0)-(b.slot||0)||(a.court||0)-(b.court||0))
+   .forEach(g=>rows.push([g.session||"",g.slot||"",g.court||"",g.round,
+     teamName(g.teamA),fullName(P(g.a[0])),fullName(P(g.a[1])),g.status==="final"?g.sa:"",
+     teamName(g.teamB),fullName(P(g.b[0])),fullName(P(g.b[1])),g.status==="final"?g.sb:"",
+     g.status, g.status==="final"?teamName(g.sa>g.sb?g.teamA:g.teamB):"",
+     g.walkover?"yes":"", (g.subs||[]).map(x=>`${fullName(P(x.out))} -> ${fullName(P(x.in))}`).join("; ")]));
+  dl(`${S.meta.course}_all_matches_${stamp()}.csv`,csv(rows),"text/csv");
+}
+
+/* ============================================================
+   STUDENT BOARD PAYLOAD
+   Compact, fixed-width encoding so the whole tournament fits in a link.
+   Decoder lives in board.html — keep BOARD_V in step across both files.
+   ============================================================ */
+const BOARD_V="2";
+const B64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const enc1=n=>B64[Math.max(0,Math.min(63,n|0))];
+const clean=t=>String(t).replace(/[|;^~]/g," ").trim();
+
+/* Short, stable fingerprint of the current schedule, so a result code
+   cannot be applied to a schedule that has since been regenerated. */
+function schedSig(){
+  const basis=S.games.map(g=>g.id).join("|")+"#"+S.players.length;
+  let h=5381;
+  for(let i=0;i<basis.length;i++) h=((h*33)^basis.charCodeAt(i))>>>0;
+  return h.toString(36).slice(0,6).padStart(6,"0");
+}
+function boardPayload(){
+  if(S.players.length>64) return {err:"More than 64 students — use the data.json file instead of a link."};
+  if(S.games.length>64) return {err:"More than 64 matches — scorer links handle up to 64."};
+  const ti={}; S.teams.forEach((t,i)=>ti[t.id]=i);
+  const pi={}; S.players.forEach((p,i)=>pi[p.id]=i);
+  const st={scheduled:0,live:1,final:2};
+  const games=S.games.map(g=>
+      enc1(g.session||0)+enc1(g.slot||0)+enc1(g.court||0)
+    + enc1(ti[g.teamA]??63)+enc1(ti[g.teamB]??63)
+    + enc1(pi[g.a[0]]??63)+enc1(pi[g.a[1]]??63)
+    + enc1(pi[g.b[0]]??63)+enc1(pi[g.b[1]]??63)
+    + enc1(g.sa)+enc1(g.sb)+enc1(st[g.status]||0)+enc1(g.duty!=null&&ti[g.duty]!=null?ti[g.duty]:63)).join("");
+  const fields=[
+    BOARD_V,
+    clean(S.meta.course), clean(S.meta.title),
+    [S.meta.pointsTo,S.meta.switchAt,S.meta.hardCap,S.meta.winBy2?1:0,
+     S.meta.gamesPerTie,S.meta.sessions,S.meta.courts,S.meta.slotsPerSession,S.meta.winPts].join(","),
+    new Date().toISOString(),
+    S.teams.map(t=>clean(t.name)+"^"+t.color).join(";"),
+    S.players.map(p=>clean(p.last)+"^"+clean(p.given)+"^"+(p.teamId!=null&&ti[p.teamId]!=null?ti[p.teamId]:"")).join(";"),
+    games,
+    schedSig()
+  ];
+  return {text:fields.join("|")};
+}
+function boardJSON(){
+  const pay=boardPayload();
+  return pay.err?pay:{text:JSON.stringify({v:BOARD_V,updated:new Date().toISOString(),payload:pay.text},null,0)};
+}
+function boardLink(){
+  const pay=boardPayload();
+  if(pay.err) return pay;
+  const base=location.href.replace(/[^/]*$/,"")+"board.html";
+  return {url:base+"#d="+encodeURIComponent(pay.text)};
+}
+function scorerLink(teamId){
+  const pay=boardPayload();
+  if(pay.err) return pay;
+  const idx=S.teams.findIndex(t=>t.id===teamId);
+  if(idx<0) return {err:"Unknown team"};
+  const base=location.href.replace(/[^/]*$/,"")+"scorer.html";
+  return {url:base+"#t="+idx+"&d="+encodeURIComponent(pay.text)};
+}
+/* "R2.<sig>.<triples>" — each result is 3 characters: index, score A, score B. */
+function parseResults(code){
+  const m=String(code||"").trim().match(/^R2\.([A-Za-z0-9]{6})\.([A-Za-z0-9_-]*)$/);
+  if(!m) return {err:"That does not look like a results code."};
+  if(m[1]!==schedSig()) return {err:"That code belongs to a different schedule. Ask the team for a fresh one."};
+  const body=m[2], out=[];
+  if(body.length%3) return {err:"That code looks truncated."};
+  for(let i=0;i<body.length;i+=3){
+    const gi=B64.indexOf(body[i]), a=B64.indexOf(body[i+1]), b=B64.indexOf(body[i+2]);
+    if(gi<0||a<0||b<0||gi>=S.games.length) return {err:"That code could not be read."};
+    out.push({game:S.games[gi], sa:a, sb:b});
+  }
+  return {results:out};
+}
+async function applyResults(code){
+  const r=parseResults(code);
+  if(r.err){ $("#impOut").innerHTML=`<span style="color:var(--danger)">${esc(r.err)}</span>`; return; }
+  if(!r.results.length){ $("#impOut").textContent="That code carries no results."; return; }
+  const clash=r.results.filter(x=>x.game.status==="final"&&(x.game.sa!==x.sa||x.game.sb!==x.sb));
+  if(clash.length && !(await ask(
+      `${clash.length} of these already ${clash.length>1?"have":"has"} a different score recorded. Overwrite with the scorer’s version?`,
+      "Overwrite"))) return;
+  let n=0;
+  r.results.forEach(x=>{
+    if(x.sa===x.sb) return;
+    const g=x.game;
+    g.sa=x.sa; g.sb=x.sb; g.status="final"; g.walkover=null; g.log=[];
+    if(!g.startedAt) g.startedAt=Date.now();
+    g.endedAt=Date.now(); n++;
+  });
+  save(); renderAll();
+  $("#impBox").value="";
+  $("#impOut").innerHTML=`<span style="color:var(--accent);font-weight:600">${n} result${n===1?"":"s"} recorded.</span> Change any of them from Schedule or History.`;
+}
+async function copyText(txt){
+  try{ await navigator.clipboard.writeText(txt); return true; }
+  catch(e){
+    try{
+      const ta=document.createElement("textarea");
+      ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.select();
+      const ok=document.execCommand("copy"); ta.remove(); return ok;
+    }catch(e2){ return false; }
+  }
+}
+
+/* ============================================================
+   LIVE SYNC VIEW
+   ============================================================ */
+function agoText(ts){
+  if(!ts) return "never";
+  const s=Math.round((Date.now()-ts)/1000);
+  if(s<5) return "just now";
+  if(s<60) return s+"s ago";
+  if(s<3600) return Math.round(s/60)+" min ago";
+  return Math.round(s/3600)+" h ago";
+}
+function renderCloud(){
+  const pill=$("#livePill"); if(!pill) return;
+  const on=S.cloud&&S.cloud.on;
+  let label, cls="pill no-print";
+  if(!on) label="\u25cb offline";
+  else if(PUSH.err) label="\u26a0 sync error";
+  else if(PUSH.busy||PUSH.pending){ label="\u21bb syncing"; cls+=" live"; }
+  else { label="\u25cf live"; cls+=" live"; }
+  pill.className=cls; pill.textContent=label;
+
+  const st=$("#liveState"); const body=$("#liveBody");
+  if(!st||!body) return;
+  st.textContent = on ? (PUSH.err?"error":"on") : "off";
+
+  if(!on){
+    body.innerHTML=`
+      <p class="small muted" style="margin:0 0 4px">Publish the tournament so every signed-in student sees it update by itself. One link for the whole class, given out once.</p>
+      <div class="row">
+        <label class="field" style="flex-direction:row;align-items:center;gap:7px">Class code
+          <input type="text" id="slugIn" value="${esc(S.cloud.slug||defaultSlug())}" style="width:150px"></label>
+        <button class="btn primary" id="liveOn">Turn on live sync</button>
+      </div>
+      <p class="small muted" style="margin:0">The class code appears in the link students open. Letters, numbers and hyphens.</p>`;
+    return;
+  }
+  body.innerHTML=`
+    <div class="row" style="gap:18px">
+      <div class="stat"><span class="small muted">Class code</span><b style="font-size:14px">${esc(S.cloud.slug)}</b></div>
+      <div class="stat"><span class="small muted">Last sent</span><b style="font-size:14px">${agoText(PUSH.last)}</b></div>
+      <div class="stat"><span class="small muted">Signed in as</span><b style="font-size:14px">${esc((window.PJ&&PJ.currentUser()&&PJ.currentUser().email)||"\u2014")}</b></div>
+    </div>
+    ${PUSH.err?`<div class="banner">${esc(PUSH.err)}<br><span class="small" style="opacity:.85">Scores are safe on this device and will be sent when the connection returns.</span></div>`:""}
+    <div class="row">
+      <button class="btn primary" id="copyLive">Copy class link</button>
+      <button class="btn" id="pushNowBtn">Send now</button>
+      <button class="btn ghost" id="liveOff">Pause</button>
+    </div>
+    <p class="small muted" style="margin:0">Give the class link out once. Students sign in with the shared student password and the board keeps itself current from then on.</p>
+    <div id="liveOut" class="small"></div>`;
+}
+
+/* ---------- results posted by scoring teams ---------- */
+let PENDING=[], UNWATCH=null;
+function watchResults(){
+  if(UNWATCH){ try{UNWATCH();}catch(e){} UNWATCH=null; }
+  if(!S.cloud||!S.cloud.on||!S.cloud.slug||!window.PJ||!PJ.isAdmin()) return;
+  UNWATCH=PJ.watchResults(S.cloud.slug,rows=>{
+    PENDING=rows||[]; renderPending(); renderDuties();
+  },e=>{});
+}
+function renderPending(){
+  const box=$("#pendBox"); if(!box) return;
+  if(!S.cloud||!S.cloud.on){
+    box.innerHTML=`<p class="small muted" style="margin:0">Turn on live sync in Setup and results sent by scoring teams land here.</p>`; return; }
+  if(!PENDING.length){
+    box.innerHTML=`<p class="small muted" style="margin:0">Nothing waiting. Results sent by a scoring team appear here the moment they are saved.</p>`; return; }
+  box.innerHTML=`<div class="row" style="margin-bottom:10px">
+      <button class="btn primary sm" id="applyAll">Accept all ${PENDING.length}</button>
+      <button class="btn sm ghost" id="rejectAll">Discard all</button></div>
+    <table><thead><tr><th>Match</th><th>From</th><th class="num">Score</th><th class="num"></th></tr></thead>
+    <tbody>${PENDING.map(r=>{
+      const g=S.games[r.gameIdx];
+      if(!g) return "";
+      const conflict=g.status==="final"&&(g.sa!==r.sa||g.sb!==r.sb);
+      return `<tr>
+        <td class="small">S${g.session||"\u2013"} \u00b7 C${g.court||"\u2013"}<br>
+          <span class="muted">${esc(teamName(g.teamA))} v ${esc(teamName(g.teamB))}</span></td>
+        <td class="small">${esc((S.teams[r.teamIdx]||{}).name||"\u2014")}</td>
+        <td class="num"><b>${r.sa}\u2013${r.sb}</b>${conflict?`<br><span class="small" style="color:var(--warn)">now ${g.sa}\u2013${g.sb}</span>`:""}</td>
+        <td class="num"><button class="btn sm" data-apply="${r.gameIdx}">Accept</button></td></tr>`;
+    }).join("")}</tbody></table>`;
+}
+async function applyPending(list){
+  let n=0;
+  list.forEach(r=>{
+    const g=S.games[r.gameIdx];
+    if(!g||r.sa===r.sb) return;
+    g.sa=r.sa; g.sb=r.sb; g.status="final"; g.walkover=null; g.log=[];
+    if(!g.startedAt) g.startedAt=Date.now();
+    g.endedAt=Date.now(); n++;
+  });
+  await clearPending(list.map(r=>r.gameIdx));
+  save(); renderAll();
+  toast(`${n} result${n===1?"":"s"} accepted`);
+}
+async function clearPending(ids){
+  try{ await PJ.clearResults(S.cloud.slug,ids); }catch(e){ toast(PJ.explain(e)); }
+  PENDING=PENDING.filter(r=>!ids.includes(r.gameIdx));
+  renderPending();
+}
+
+/* ============================================================
+   SETUP
+   ============================================================ */
+function renderSetup(){
+  const m=S.meta;
+  $("#cfgCourse").value=m.course; $("#cfgTitle").value=m.title;
+  $("#cfgSessions").value=m.sessions; $("#cfgCourts").value=m.courts;
+  $("#cfgSlots").value=m.slotsPerSession; $("#cfgMins").value=m.sessionMins;
+  $("#cfgGPT").value=m.gamesPerTie; $("#cfgPoints").value=m.pointsTo;
+  $("#cfgSwitch").value=m.switchAt; $("#cfgCap").value=m.hardCap;
+  $("#cfgWinBy2").checked=!!m.winBy2; $("#cfgWinPts").value=m.winPts;
+  $("#cfgStrict").checked=!!m.strictPairs;
+  const cap=m.sessions*m.slotsPerSession*m.courts;
+  const n=S.teams.length, ties=n>=2?n*(n-1)/2:0, need=ties*m.gamesPerTie;
+  const chk=n>=2?pairingCheck():[], short=chk.filter(c=>!c.ok);
+  $("#capNote").innerHTML=`Capacity ${cap} matches · ${n} teams need ${need} (${ties} ties × ${m.gamesPerTie})`
+    + (short.length?` · <b style="color:var(--warn)">${short.length} team${short.length>1?"s":""} cannot avoid repeated partnerships</b>`
+       : n>=2?` · <b style="color:var(--accent)">every partnership can be unique</b>`:"");
+  $("#rPoints").textContent=m.pointsTo; $("#rCap").textContent=m.hardCap;
+  $("#rSwitch").textContent=m.switchAt; $("#rGPT").textContent=m.gamesPerTie;
+  $("#rBy2").textContent=m.winBy2?", win by 2":"";
+  $("#rRot").innerHTML=m.strictPairs
+    ? "Partners rotate: <b>no student is paired with the same teammate twice</b>."
+    : "Partners rotate, and a partnership may repeat only when a team runs out of new ones.";
+  $("#brandTitle").textContent=`${m.course} Pickleball`;
+  $("#brandSub").textContent=m.title;
+  document.title=`${m.course} · ${m.title}`;
+}
+function saveCfg(){
+  const num=(id,d)=>{const v=parseInt($(id).value,10);return isNaN(v)?d:v;};
+  S.meta={...S.meta,
+    course:$("#cfgCourse").value.trim()||"PED013",
+    title:$("#cfgTitle").value.trim()||"Pickleball Class Tournament",
+    sessions:num("#cfgSessions",8), courts:num("#cfgCourts",2),
+    slotsPerSession:num("#cfgSlots",4), sessionMins:num("#cfgMins",60),
+    gamesPerTie:num("#cfgGPT",3), pointsTo:num("#cfgPoints",11),
+    switchAt:num("#cfgSwitch",6), hardCap:num("#cfgCap",15),
+    winBy2:$("#cfgWinBy2").checked, winPts:num("#cfgWinPts",2),
+    strictPairs:$("#cfgStrict").checked};
+  if(S.games.length) placeGames();
+  save(); renderAll(); toast("Settings saved");
+}
+
+/* ============================================================
+   RENDER + EVENTS
+   ============================================================ */
+function renderAll(){ renderTeams(); renderAttendance(); renderDuties(); renderSchedule(); renderCourts();
+  renderStandings(); renderHistory(); renderPlayers(); renderSetup(); renderCloud(); renderPending(); }
+
+function showView(v){
+  $$(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
+  $$("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.view===v));
+  try{ window.scrollTo({top:0}); }catch(e){}
+}
+
+document.addEventListener("click",e=>{
+  const t=e.target;
+  const tab=t.closest("#tabs button"); if(tab) return showView(tab.dataset.view);
+
+  if(t.id==="signOut"){
+    ask("Sign out of this device? The tournament stays on the server and in this browser.","Sign out")
+      .then(yes=>{ if(yes) PJ.signOut().then(()=>location.replace("index.html")); });
+    return;
+  }
+  if(t.id==="liveOn"||t.id==="livePill"&&!(S.cloud&&S.cloud.on)){
+    const inp=$("#slugIn");
+    if(inp){ const v=(inp.value||"").trim().toLowerCase();
+      if(!slugOk(v)) return toast("Use letters, numbers and hyphens for the class code");
+      S.cloud.slug=v; }
+    enableLive(); return;
+  }
+  if(t.id==="liveOff"){ disableLive(); return; }
+  if(t.id==="pushNowBtn"){ pushNow(); return; }
+  if(t.id==="copyLive"){
+    const u=liveBoardLink(); if(!u) return toast("Turn on live sync first");
+    copyText(u).then(okc=>{
+      const o=$("#liveOut");
+      if(o) o.innerHTML = okc
+        ? `<span style="color:var(--accent);font-weight:600">Class link copied</span> ${"·"} give it out once, with the student password.`
+        : `<textarea readonly style="width:100%;height:56px;font-size:11px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:8px">${esc(u)}</textarea>`;
+    });
+    return;
+  }
+  if(t.id==="applyAll"){ applyPending(PENDING.slice()); return; }
+  if(t.id==="rejectAll"){ clearPending(PENDING.map(r=>r.game_idx)); return; }
+  const ap=t.closest("[data-apply]");
+  if(ap){ const r=PENDING.find(x=>x.game_idx===+ap.dataset.apply); if(r) applyPending([r]); return; }
+  if(t.closest("[data-bypass]")){ generateSchedule(true); return; }
+  const sess=t.closest("[data-sess]");
+  if(sess){ S.ui.session=+sess.dataset.sess; save(); renderSchedule(); renderCourts(); return; }
+
+  const sl=t.closest("[data-slink]");
+  if(sl){
+    const idx=S.teams.findIndex(x=>x.id===sl.dataset.slink);
+    const liveUrl=liveScorerLink(idx);
+    const r = (S.cloud&&S.cloud.on&&liveUrl) ? {url:liveUrl} : scorerLink(sl.dataset.slink);
+    if(r.err) return toast(r.err);
+    copyText(r.url).then(okc=>{
+      $("#dutyLinkOut").innerHTML = okc
+        ? `<span style="color:var(--accent);font-weight:600">${esc(teamName(sl.dataset.slink))} link copied</span> · ${r.url.length} characters`
+        : `<div class="small muted" style="margin-bottom:4px">Copy this link by hand:</div>
+           <textarea readonly style="width:100%;height:70px;font-size:11px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:8px">${esc(r.url)}</textarea>`;
+    });
+    return;
+  }
+  const att=t.closest("[data-att]"); if(att){ e.stopPropagation(); return toggleAbsent(S.ui.attSession||1, att.dataset.att); }
+  const wo=t.closest("[data-wo]"); if(wo){ e.stopPropagation(); return walkover(wo.dataset.wo); }
+  const qsv=t.closest("[data-qsave]"); if(qsv){ e.stopPropagation(); return quickSave(qsv.dataset.qsave); }
+  const qed=t.closest("[data-qedit]");
+  if(qed){ e.stopPropagation();
+    const g=S.games.find(x=>x.id===qed.dataset.qedit); if(!g) return;
+    Object.assign(g,{sa:0,sb:0,status:"scheduled",log:[],switched:false,server:"A",startedAt:null,endedAt:null});
+    save(); renderAll(); return; }
+  if(t.closest(".qs")||t.closest(".sc-in")||t.closest(".qs-res")) { e.stopPropagation(); return; }
+  const ed=t.closest("[data-edit]"); if(ed){ e.stopPropagation(); return openEdit(ed.dataset.edit); }
+  const op=t.closest("[data-open]"); if(op) return openScorer(op.dataset.open);
+
+  const seg=t.closest("#standSeg button"); if(seg){ S.ui.stand=seg.dataset.s; save(); return renderStandings(); }
+
+  const pt=t.closest("[data-pt]"); if(pt) return addPoint(pt.dataset.pt);
+
+  const act=t.closest("[data-act]");
+  if(act){
+    const g=S.games.find(x=>x.id===OV); if(!g) return;
+    const a=act.dataset.act;
+    if(a==="undo") undoPoint();
+    else if(a==="serve"){ g.server=g.server==="A"?"B":"A"; save(); drawScorer(); }
+    else if(a==="minusA"){ g.sa=Math.max(0,g.sa-1); save(); drawScorer(); }
+    else if(a==="minusB"){ g.sb=Math.max(0,g.sb-1); save(); drawScorer(); }
+    else if(a==="switched"){ g.switched=true; save(); drawScorer(); }
+    else if(a==="finish") finishMatch();
+    else if(a==="reopen"){ g.status="live"; g.endedAt=null; save(); drawScorer(); renderAll(); }
+    return;
+  }
+  const eda=t.closest("[data-ed-act]");
+  if(eda){
+    const g=S.games.find(x=>x.id===EDIT); if(!g) return;
+    const a=eda.dataset.edAct;
+    if(a==="save") saveEdit();
+    else if(a==="reset"){ Object.assign(g,{sa:0,sb:0,status:"scheduled",log:[],switched:false,server:"A",startedAt:null,endedAt:null}); save(); $("#editOverlay").classList.remove("open"); renderAll(); toast("Score reset"); }
+    else if(a==="del"){ ask("Delete this match?","Delete").then(yes=>{ if(!yes) return;
+      S.games=S.games.filter(x=>x.id!==g.id); save(); $("#editOverlay").classList.remove("open"); renderAll(); }); }
+    return;
+  }
+  const dp=t.closest("[data-delplayer]");
+  if(dp){
+    const p=P(dp.dataset.delplayer); if(!p) return;
+    ask(`Remove ${fullName(p)} from the class list? Any match they were scheduled in is removed too.`,"Remove").then(yes=>{
+      if(!yes) return;
+      S.players=S.players.filter(x=>x.id!==p.id);
+      S.games=S.games.filter(g=>!g.a.includes(p.id)&&!g.b.includes(p.id));
+      save(); renderAll();
+    });
+    return;
+  }
+  if(t.id==="overlay") closeScorer();
+  if(t.id==="editOverlay") $("#editOverlay").classList.remove("open");
+  if(t.id==="askOverlay"){ const ov=$("#askOverlay"); if(ov._cancel) ov._cancel(); }
+});
+
+document.addEventListener("keydown",e=>{
+  const inp=e.target.closest&&e.target.closest("[data-score]");
+  if(inp && e.key==="Enter"){ e.preventDefault(); quickSave(inp.dataset.score); }
+},true);
+document.addEventListener("change",e=>{
+  const as=e.target.closest("[data-assign]");
+  if(as){ const p=P(as.dataset.assign); if(p){ p.teamId=as.value||null; save(); renderTeams(); renderSchedule(); renderStandings(); renderPlayers(); } }
+  if(e.target.id==="courtSession"){ S.ui.session=+e.target.value; save(); renderCourts(); renderSchedule(); }
+  if(e.target.id==="attSession"){ S.ui.attSession=+e.target.value; save(); renderAttendance(); }
+  if(e.target.id==="dutySession"){ S.ui.dutySession=+e.target.value; save(); renderDuties(); }
+  const dsel=e.target.closest&&e.target.closest("[data-duty]");
+  if(dsel){ const g=S.games.find(x=>x.id===dsel.dataset.duty);
+    if(g){ g.duty=dsel.value||null; save(); renderDuties(); renderSchedule(); renderCourts(); } }
+});
+
+$("#rosterSearch").addEventListener("input",renderRoster);
+$("#playerSearch").addEventListener("input",renderPlayers);
+$("#histSearch").addEventListener("input",renderHistory);
+$("#histCsv").addEventListener("click",exportGamesCSV);
+$("#dutyRedo").addEventListener("click",()=>{
+  if(!S.games.length) return toast("Generate a schedule first");
+  assignDuties(); save(); renderAll(); toast("Duties reassigned");
+});
+$("#impApply").addEventListener("click",()=>applyResults($("#impBox").value));
+$("#attAllIn").addEventListener("click",()=>{
+  const sess=S.ui.attSession||1;
+  const out=absentList(sess);
+  if(!out.length) return toast("Everyone is already marked present");
+  delete S.attendance[sess]; save();
+  let n=0; out.forEach(pid=>{ n+=revertAbsence(sess,pid); });
+  renderAll(); toast(`${out.length} marked present · ${n} match${n===1?"":"es"} restored`);
+});
+$("#ovClose").addEventListener("click",closeScorer);
+$("#edClose").addEventListener("click",()=>$("#editOverlay").classList.remove("open"));
+$("#buildTeams").addEventListener("click",()=>buildTeams(Math.max(2,Math.min(12,+$("#teamCount").value||6))));
+$("#autoRandom").addEventListener("click",()=>autoAssign("random"));
+$("#autoSnake").addEventListener("click",()=>autoAssign("snake"));
+$("#clearAssign").addEventListener("click",()=>{S.players.forEach(p=>p.teamId=null);save();renderAll();});
+$("#addStudent").addEventListener("click",()=>{
+  const raw=prompt("Add student (format: Last, First Middle)"); if(!raw) return;
+  const n=parseName(raw);
+  S.players.push({id:uid("p"),raw,last:n.last,given:n.given,middle:n.middle,teamId:null});
+  save(); renderAll();
+});
+$("#genSchedule").addEventListener("click",()=>generateSchedule());
+$("#reshuffleAll").addEventListener("click",reshufflePairs);
+$("#printSched").addEventListener("click",()=>window.print());
+$("#csvTeam").addEventListener("click",exportTeamCSV);
+$("#csvPlayer").addEventListener("click",exportPlayerCSV);
+$("#csvGames").addEventListener("click",exportGamesCSV);
+$("#saveCfg").addEventListener("click",saveCfg);
+$("#boardLink").addEventListener("click",async()=>{
+  if(!S.games.length) return toast("Generate a schedule first");
+  const r=boardLink();
+  if(r.err) return toast(r.err);
+  const ok=await copyText(r.url);
+  $("#shareOut").innerHTML = ok
+    ? `<span style="color:var(--accent);font-weight:600">Link copied</span> · ${r.url.length} characters · paste it into the class chat.`
+    : `<div class="small muted" style="margin-bottom:4px">Copy this link by hand:</div>
+       <textarea readonly style="width:100%;height:70px;font-size:11px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:8px">${esc(r.url)}</textarea>`;
+});
+$("#boardFile").addEventListener("click",()=>{
+  if(!S.games.length) return toast("Generate a schedule first");
+  const r=boardJSON();
+  if(r.err) return toast(r.err);
+  dl("data.json",r.text,"application/json");
+  $("#shareOut").innerHTML=`<span style="color:var(--accent);font-weight:600">data.json saved</span> · commit it to the repository root, beside board.html.`;
+});
+$("#exportJson").addEventListener("click",()=>dl(`${S.meta.course}_pickleball_backup_${stamp()}.json`,JSON.stringify(S,null,2),"application/json"));
+$("#importJson").addEventListener("click",()=>$("#fileIn").click());
+$("#fileIn").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const d=JSON.parse(r.result);
+      if(!d.players) throw 0;
+      S={...seed(),...d}; S.meta={...DEFAULT_META,...(d.meta||{})}; save(); renderAll(); toast("Backup restored");
+    }catch(err){ alert("That file isn't a valid backup."); } };
+  r.readAsText(f); e.target.value="";
+});
+$("#resetScores").addEventListener("click",async()=>{
+  if(!(await ask("Clear every recorded score? The schedule and teams stay.","Clear scores"))) return;
+  S.games.forEach(g=>Object.assign(g,{sa:0,sb:0,status:"scheduled",log:[],switched:false,server:"A",startedAt:null,endedAt:null}));
+  save(); renderAll(); toast("Scores cleared");
+});
+$("#resetAll").addEventListener("click",async()=>{
+  if(!(await ask("Erase teams, schedule and all results, and reload the original class list?","Erase everything"))) return;
+  S=seed(); save(); renderAll(); toast("Reset complete");
+});
+$("#themeBtn").addEventListener("click",()=>{
+  const set=document.documentElement.getAttribute("data-theme");
+  let dark = set ? set==="dark" : false;
+  if(!set){ try{ dark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches); }catch(e){} }
+  const next = dark ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme",next);
+  try{ localStorage.setItem(KEY+"-theme",next); }catch(e){}
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){ if($("#overlay").classList.contains("open")) closeScorer(); $("#editOverlay").classList.remove("open"); }
+  if(!$("#overlay").classList.contains("open")) return;
+  if(e.key==="a"||e.key==="A") addPoint("A");
+  if(e.key==="l"||e.key==="L") addPoint("B");
+  if(e.key==="z"||e.key==="Z") undoPoint();
+});
+
+/* ---------- boot ---------- */
+function bootUI(){
+  let th=null;
+  try{ th=localStorage.getItem(KEY+"-theme"); }catch(e){}
+  if(th==="dark"||th==="light") document.documentElement.setAttribute("data-theme",th);
+  renderAll();
+  if(S.cloud&&S.cloud.on&&S.cloud.slug){ pushNow(); watchResults(); }
+  setInterval(renderCloud,20000);
+}
+(function init(){
+  if(!window.PJ||!PJ.configured){
+    document.body.insertAdjacentHTML("afterbegin",
+      '<div class="banner" style="margin:14px">'+((window.PJ&&PJ.failure==="setup")
+        ? "Firebase is not set up yet. Open <code>firebase-config.js</code>, paste in your settings, and reload. <code>SETUP.md</code> has every step."
+        : esc((window.PJ&&PJ.failure)||"Could not start."))+'</div>');
+    bootUI();
+    return;
+  }
+  PJ.require("admin", async function(){
+    if(!S.games.length && !S.teams.length){
+      const got=await restoreFromCloud();
+      if(got) toast("Tournament restored from the server");
+    }
+    bootUI();
+  });
+})();
+</script>
+</body>
+</html>

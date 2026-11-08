@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pickleball Scorer Sheet</title>
+<meta name="description" content="Scoring and refereeing sheet for a team on duty.">
+<style>
+:root{
+  --bg:#f6f7f5; --panel:#fff; --panel-2:#f0f2ee; --line:#dfe3da;
+  --ink:#1b2318; --ink-2:#5c6554; --ink-3:#8a9280;
+  --accent:#4f7a28; --accent-ink:#fff; --accent-soft:#e8f2da;
+  --warn:#b4531a; --warn-soft:#fdeadd; --danger:#a32a2a;
+  --shadow:0 1px 2px rgba(20,30,10,.06),0 8px 24px rgba(20,30,10,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#13170f; --panel:#1b2016; --panel-2:#222819; --line:#333c27;
+  --ink:#eef2e6; --ink-2:#aab59b; --ink-3:#7d876e;
+  --accent:#9ccb62; --accent-ink:#14200a; --accent-soft:#26331a;
+  --warn:#e2a06a; --warn-soft:#3a2a18; --danger:#e07a7a;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+} }
+:root[data-theme="dark"]{
+  --bg:#13170f; --panel:#1b2016; --panel-2:#222819; --line:#333c27;
+  --ink:#eef2e6; --ink-2:#aab59b; --ink-3:#7d876e;
+  --accent:#9ccb62; --accent-ink:#14200a; --accent-soft:#26331a;
+  --warn:#e2a06a; --warn-soft:#3a2a18; --danger:#e07a7a;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box} html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+h1,h2{margin:0;font-weight:650;letter-spacing:-.01em} h2{font-size:17px}
+button{font:inherit;color:inherit;cursor:pointer}
+.topbar{position:sticky;top:0;z-index:30;background:var(--panel);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:760px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.badge{width:30px;height:30px;border-radius:9px;flex:none}
+.topbar b{display:block;font-size:15px;line-height:1.2}
+.topbar span.sub{font-size:11.5px;color:var(--ink-3)}
+main{max-width:760px;margin:0 auto;padding:18px 16px 80px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:14px}
+.card-h{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-b{padding:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{margin-left:auto}
+.muted{color:var(--ink-3)} .small{font-size:12.5px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--panel-2);color:var(--ink-2)}
+.pill.done{background:var(--accent-soft);color:var(--accent)}
+.dot{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:9px 14px;font-size:14px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:9px}
+.empty{padding:38px 16px;text-align:center;color:var(--ink-3)}
+.sess{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px}
+.sess button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 13px;font-size:13px;font-weight:600;white-space:nowrap}
+.sess button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.match{border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:11px;background:var(--panel)}
+.match.done{background:var(--panel-2)}
+.side{display:flex;align-items:center;gap:9px;padding:7px 0}
+.side .nm{min-width:0;line-height:1.3}
+.side .tn{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.side .pl{font-size:13.5px}
+.side input{width:58px;margin-left:auto;text-align:center;font-weight:750;font-size:21px;
+  font-variant-numeric:tabular-nums;padding:7px 4px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:inherit}
+.side input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+.side .fin{margin-left:auto;font-weight:750;font-size:23px;font-variant-numeric:tabular-nums;min-width:32px;text-align:right}
+.side.win .fin{color:var(--accent)}
+.rules{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:11px 14px;font-size:13px;font-weight:550;line-height:1.6}
+.code{width:100%;height:76px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px;color:inherit;resize:vertical}
+.banner{border:1px solid var(--line);background:var(--warn-soft);color:var(--warn);padding:11px 14px;border-radius:12px;font-size:13px;font-weight:550}
+@media (max-width:620px){ main{padding:14px 12px 80px} }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="badge" id="tBadge" style="background:var(--accent)"></div>
+    <div style="margin-right:auto;min-width:0">
+      <b id="tName">Scorer sheet</b><span class="sub" id="tSub">scoring &amp; refereeing duty</span>
+    </div>
+    <span class="pill" id="tCount"></span>
+  </div>
+</header>
+
+<main>
+  <div id="state"></div>
+  <div id="body"></div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   Scorer sheet — one team's scoring and refereeing duty.
+   Opened from a link the teacher sends. Scores are kept on this
+   device and handed back as a short code.
+   ============================================================ */
+const BOARD_V="2";
+const B64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const dec1=c=>B64.indexOf(c), enc1=n=>B64[Math.max(0,Math.min(63,n|0))];
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+let D=null, ME=null, SESS=null, LOCAL={}, SIG="", SLUG=null, SENDING={}, LAST_ERR="", UNSUB=null;
+
+function decode(text){
+  const f=String(text).split("|");
+  if(f[0]!==BOARD_V) throw new Error("This link was made by a different version of the app. Ask your teacher for a new one.");
+  const n=f[3].split(",").map(Number);
+  const meta={course:f[1],title:f[2],pointsTo:n[0],switchAt:n[1],hardCap:n[2],winBy2:!!n[3],
+    gamesPerTie:n[4],sessions:n[5],courts:n[6],slots:n[7],winPts:n[8],updated:f[4]};
+  const teams=f[5]?f[5].split(";").map((t,i)=>{const [name,color]=t.split("^");return {i,name,color};}):[];
+  const players=f[6]?f[6].split(";").map((p,i)=>{const [last,given,ti]=p.split("^");
+    return {i,last,given,team:ti===""?null:+ti};}):[];
+  const games=[], raw=f[7]||"", STS=["scheduled","live","final"];
+  for(let k=0;k+13<=raw.length;k+=13){
+    const c=raw.slice(k,k+13).split("").map(dec1);
+    games.push({i:games.length,session:c[0]||null,slot:c[1]||null,court:c[2]||null,
+      teamA:c[3],teamB:c[4],a:[c[5],c[6]],b:[c[7],c[8]],
+      sa:c[9],sb:c[10],status:STS[c[11]]||"scheduled",duty:c[12]===63?null:c[12]});
+  }
+  return {meta,teams,players,games,sig:f[8]||""};
+}
+const team=i=>D.teams[i]||{name:"—",color:"#888"};
+const shortOf=i=>{const p=D.players[i];return p?`${p.given.split(" ")[0]} ${p.last}`:"—";};
+
+const storeKey=()=>`pickle-scorer-${SIG}-${ME}`;
+function loadLocal(){ try{ LOCAL=JSON.parse(localStorage.getItem(storeKey()))||{}; }catch(e){ LOCAL={}; } }
+function saveLocal(){ try{ localStorage.setItem(storeKey(),JSON.stringify(LOCAL)); }catch(e){} }
+
+/* ---------- entering a score ---------- */
+async function sendResult(gi,a,b){
+  if(!SLUG||!window.PJ||!PJ.configured||!PJ.currentUser()) return;
+  SENDING[gi]="sending"; render();
+  try{
+    await PJ.postResult(SLUG, +gi, ME, a, b);
+    SENDING[gi]="sent";
+  }catch(e){ SENDING[gi]="failed"; LAST_ERR=PJ.explain(e); }
+  render();
+}
+function retryUnsent(){
+  if(!SLUG) return;
+  Object.keys(LOCAL).forEach(k=>{
+    if(SENDING[k]!=="sent"){ const r=LOCAL[k]; sendResult(+k,r.a,r.b); }
+  });
+}
+function setScore(gi){
+  const a=parseInt($(`[data-s="${gi}"][data-side="a"]`).value,10);
+  const b=parseInt($(`[data-s="${gi}"][data-side="b"]`).value,10);
+  const msg=$(`[data-msg="${gi}"]`);
+  const say=t=>{ if(msg){ msg.textContent=t; msg.style.color="var(--danger)"; } };
+  if(isNaN(a)||isNaN(b)) return say("Enter a score for both teams.");
+  if(a<0||b<0) return say("Scores cannot be negative.");
+  if(a===b) return say("A game cannot end level.");
+  if(a>63||b>63) return say("That score is too high.");
+  const hi=Math.max(a,b), lo=Math.min(a,b), m=D.meta;
+  const done = hi>=m.hardCap || (hi>=m.pointsTo && (!m.winBy2 || hi-lo>=2));
+  if(!done) return say(`A game runs to ${m.pointsTo}${m.winBy2?", win by 2":""}. Check the score.`);
+  LOCAL[gi]={a,b}; saveLocal();
+  if(SLUG) sendResult(gi,a,b); else render();
+}
+function clearScore(gi){ delete LOCAL[gi]; saveLocal(); render(); }
+
+/* ---------- the code that goes back to the teacher ---------- */
+function resultCode(){
+  const keys=Object.keys(LOCAL).map(Number).sort((x,y)=>x-y);
+  return "R2."+SIG+"."+keys.map(k=>enc1(k)+enc1(LOCAL[k].a)+enc1(LOCAL[k].b)).join("");
+}
+async function copyCode(){
+  const txt=resultCode();
+  let ok=false;
+  try{ await navigator.clipboard.writeText(txt); ok=true; }
+  catch(e){
+    try{ const ta=document.createElement("textarea"); ta.value=txt;
+      ta.style.cssText="position:fixed;opacity:0"; document.body.appendChild(ta);
+      ta.select(); ok=document.execCommand("copy"); ta.remove(); }catch(e2){}
+  }
+  const out=$("#codeOut");
+  if(out) out.textContent = ok ? "Copied. Send it to your teacher." : "Copy the code above by hand and send it to your teacher.";
+}
+
+/* ---------- rendering ---------- */
+function myGames(){ return D.games.filter(g=>g.duty===ME); }
+function matchHTML(g){
+  const rec=LOCAL[g.i];
+  const fin=g.status==="final";
+  const sa=fin?g.sa:(rec?rec.a:null), sb=fin?g.sb:(rec?rec.b:null);
+  const settled=fin||!!rec;
+  const cell=(side,val)=> settled
+    ? `<div class="fin">${val}</div>`
+    : `<input type="text" inputmode="numeric" maxlength="2" data-s="${g.i}" data-side="${side}"
+         aria-label="Score for ${esc(team(side==="a"?g.teamA:g.teamB).name)}">`;
+  const row=(side)=>{
+    const tid=side==="a"?g.teamA:g.teamB, ids=side==="a"?g.a:g.b;
+    const mine=side==="a"?sa:sb, other=side==="a"?sb:sa;
+    return `<div class="side ${settled&&mine>other?"win":""}">
+      <span class="dot" style="background:${team(tid).color}"></span>
+      <div class="nm"><div class="tn" style="color:${team(tid).color}">${esc(team(tid).name)}</div>
+        <div class="pl">${ids.map(i=>esc(shortOf(i))).join(" &amp; ")}</div></div>
+      ${cell(side,mine)}</div>`;
+  };
+  return `<div class="match ${settled?"done":""}">
+    <div class="row" style="gap:7px;margin-bottom:4px">
+      <span class="pill">Court ${g.court} · Slot ${g.slot}</span>
+      ${fin?`<span class="pill done">RECORDED BY TEACHER</span>`
+        :rec?(SLUG
+          ? (SENDING[g.i]==="sent"?`<span class="pill done">SENT TO TEACHER</span>`
+            :SENDING[g.i]==="failed"?`<span class="pill" style="background:var(--warn-soft);color:var(--warn)">NOT SENT — WILL RETRY</span>`
+            :`<span class="pill">SENDING\u2026</span>`)
+          : `<span class="pill done">SAVED</span>`):""}
+    </div>
+    ${row("a")}${row("b")}
+    ${fin?"" : rec
+      ? `<div class="row" style="margin-top:8px"><button class="btn sm" data-clear="${g.i}">Change</button></div>`
+      : `<div class="row" style="margin-top:8px">
+           <button class="btn sm primary" data-save="${g.i}">Save score</button>
+           <span class="small muted" data-msg="${g.i}"></span></div>`}
+  </div>`;
+}
+function render(){
+  const mine=myGames();
+  const sessions=[...new Set(mine.map(g=>g.session).filter(Boolean))].sort((a,b)=>a-b);
+  if(SESS==null||!sessions.includes(SESS)) SESS=sessions[0]||null;
+  const saved=Object.keys(LOCAL).length;
+  $("#tCount").textContent=`${saved} of ${mine.length} scored`;
+
+  if(!mine.length){
+    $("#body").innerHTML=`<div class="card"><div class="empty">
+      Your team has no scoring duty in this schedule.</div></div>`;
+    return;
+  }
+  const list=mine.filter(g=>g.session===SESS);
+  const m=D.meta;
+  $("#body").innerHTML=`
+    <div class="sess">${sessions.map(s=>{
+      const gs=mine.filter(g=>g.session===s);
+      const n=gs.filter(g=>LOCAL[g.i]||g.status==="final").length;
+      return `<button data-sess="${s}" aria-selected="${s===SESS}">Session ${s} <span class="muted">${n}/${gs.length}</span></button>`;
+    }).join("")}</div>
+
+    <div class="card"><div class="card-h"><h2>Matches you are scoring</h2>
+      <span class="pill spacer">Session ${SESS}</span></div>
+      <div class="card-b">
+        <div class="rules" style="margin-bottom:14px">
+          Games go to <b>${m.pointsTo}</b>${m.winBy2?", win by 2":""}, capped at <b>${m.hardCap}</b>.
+          A point is scored on <b>every rally</b>. Teams <b>switch ends</b> when a side reaches <b>${m.switchAt}</b>.
+        </div>
+        ${list.length?list.map(matchHTML).join(""):`<div class="empty">Nothing to score in this session.</div>`}
+      </div></div>
+
+    ${SLUG?`<div class="card"><div class="card-h"><h2>Sending to your teacher</h2>
+      <span class="pill spacer ${saved&&Object.keys(LOCAL).every(k=>SENDING[k]==="sent")?"done":""}">${
+        saved?`${Object.keys(LOCAL).filter(k=>SENDING[k]==="sent").length} of ${saved} sent`:"nothing yet"}</span></div>
+      <div class="card-b">
+        <p class="small muted" style="margin:0 0 10px">Each score reaches your teacher as you save it. Anything that fails is retried by itself \u2014 you can leave this page open.</p>
+        <div class="row"><button class="btn" id="retryBtn">Retry now</button></div>
+        ${LAST_ERR&&Object.keys(LOCAL).some(k=>SENDING[k]==="failed")?`<div class="banner" style="margin-top:10px">${esc(LAST_ERR)}</div>`:""}
+        <details style="margin-top:12px"><summary class="small muted" style="cursor:pointer">Backup code, if a score will not send</summary>
+          <textarea class="code" id="codeBox" readonly style="margin-top:8px">${esc(resultCode())}</textarea>
+          <div class="row" style="margin-top:8px"><button class="btn sm" id="copyBtn" ${saved?"":"disabled"}>Copy code</button>
+            <span class="small muted" id="codeOut"></span></div>
+        </details>
+      </div></div>`
+    :`<div class="card"><div class="card-h"><h2>Send results to your teacher</h2></div>
+      <div class="card-b">
+        <p class="small muted" style="margin:0 0 10px">Copy this code and send it to your teacher. Scores stay on this phone until you do.</p>
+        <textarea class="code" id="codeBox" readonly>${esc(resultCode())}</textarea>
+        <div class="row" style="margin-top:9px">
+          <button class="btn primary" id="copyBtn" ${saved?"":"disabled"}>Copy code</button>
+          <span class="small muted" id="codeOut">${saved?"":"Save at least one score first."}</span>
+        </div>
+      </div></div>`}`;
+}
+
+document.addEventListener("click",e=>{
+  const s=e.target.closest("[data-save]"); if(s) return setScore(+s.dataset.save);
+  const c=e.target.closest("[data-clear]"); if(c) return clearScore(+c.dataset.clear);
+  const t=e.target.closest("[data-sess]"); if(t){ SESS=+t.dataset.sess; render(); return; }
+  if(e.target.id==="copyBtn") return copyCode();
+  if(e.target.id==="retryBtn") return retryUnsent();
+});
+document.addEventListener("keydown",e=>{
+  const i=e.target.closest&&e.target.closest("[data-s]");
+  if(i&&e.key==="Enter"){ e.preventDefault(); setScore(+i.dataset.s); }
+});
+
+function slugNow(){
+  const h=(location.hash||"");
+  const m=h.match(/[#&]c=([a-z0-9][a-z0-9-]{2,63})/i);
+  if(m) return m[1].toLowerCase();
+  try{ const v=localStorage.getItem("pj-slug"); if(v) return v; }catch(e){}
+  return (window.PJ_CONFIG||{}).defaultSlug||null;
+}
+function teamFromUrl(){
+  const m=(location.hash||"").match(/[#&]t=(\d+)/);
+  return m?+m[1]:null;
+}
+function start(){
+  const t=team(ME);
+  document.title=`${t.name} \u2014 Scorer Sheet`;
+  $("#tBadge").style.background=t.color;
+  $("#tName").textContent=t.name;
+  $("#tSub").textContent=`${D.meta.course} \u00b7 scoring & refereeing duty`;
+  loadLocal();
+  Object.keys(LOCAL).forEach(k=>{ SENDING[k]=SENDING[k]||"pending"; });
+  render();
+  if(!SLUG) return;
+  retryUnsent();
+  setInterval(()=>{ if(Object.keys(LOCAL).some(k=>SENDING[k]!=="sent")) retryUnsent(); },20000);
+}
+/* Which team am I scoring for? */
+function askTeam(){
+  $("#state").innerHTML=`<div class="card"><div class="card-h"><h2>Which team are you on?</h2></div>
+    <div class="card-b">
+      <p class="small muted" style="margin:0 0 12px">Pick your team to see the matches you are refereeing. Your teacher checks every score before it counts.</p>
+      <div class="courts">${D.teams.map(t=>{
+        const n=D.games.filter(g=>g.duty===t.i).length;
+        return `<button class="court" data-pick="${t.i}" style="text-align:left;border:1px solid var(--line);cursor:pointer;background:var(--panel);padding:0">
+          <div class="court-h" style="background:${t.color};color:#fff">${esc(t.name)}</div>
+          <div class="court-b small muted">${n} match${n===1?"":"es"} to score</div></button>`;
+      }).join("")}</div>
+    </div></div>`;
+}
+document.addEventListener("click",function(e){
+  const p=e.target.closest("[data-pick]");
+  if(p){ ME=+p.dataset.pick; $("#state").innerHTML=""; start(); return; }
+  if(e.target.id==="signOutS"){
+    PJ.signOut().then(()=>location.replace("index.html"));
+  }
+});
+(function init(){
+  const h=location.hash||"";
+  const md=h.match(/[#&]d=([^&]*)/), mt=teamFromUrl();
+
+  /* an old snapshot link still works with no sign-in */
+  if(md){
+    try{ D=decode(decodeURIComponent(md[1])); }
+    catch(err){ $("#state").innerHTML=`<div class="banner">${esc(err.message)}</div>`; return; }
+    SIG=D.sig||"nosig";
+    if(mt==null){ askTeam(); return; }
+    ME=mt; start(); return;
+  }
+  if(!window.PJ||!PJ.configured){
+    $("#state").innerHTML=`<div class="banner">${PJ&&PJ.failure==="setup"
+      ? "Firebase is not set up yet \u2014 see SETUP.md."
+      : esc((PJ&&PJ.failure)||"Could not start.")}</div>`;
+    return;
+  }
+  PJ.onAuth(function(u){
+    if(!u){ location.replace("index.html"+h); return; }
+    const slug=slugNow();
+    if(!slug){ $("#state").innerHTML=`<div class="banner">No class code. Open the link your teacher gave you.</div>`; return; }
+    SLUG=slug;
+    $("#state").innerHTML=`<div class="card"><div class="card-b small muted">Loading your matches\u2026</div></div>`;
+    UNSUB=PJ.watchTournament(slug,function(row){
+      if(!row){ $("#state").innerHTML=`<div class="banner">Nothing published for class code \u201c${esc(slug)}\u201d yet.</div>`; return; }
+      let next;
+      try{ next=decode(row.payload); }
+      catch(e){ $("#state").innerHTML=`<div class="banner">This page is older than the tournament. Ask your teacher for the latest link.</div>`; return; }
+      const first=!D;
+      D=next; SIG=D.sig||"nosig";
+      if(first){
+        $("#state").innerHTML="";
+        if(mt!=null){ ME=mt; start(); } else { askTeam(); }
+      } else if(ME!=null){ render(); }
+    },function(e){ /* the library retries by itself */ });
+  });
+})();
+</script>
+</body>
+</html>

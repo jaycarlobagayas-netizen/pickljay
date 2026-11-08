@@ -104,6 +104,9 @@ input[type=text]{background:var(--panel);border:1px solid var(--line);border-rad
       <div class="ball"></div>
       <div><b id="bTitle">Pickleball Tournament</b><span id="bSub">Class board</span></div>
     </div>
+    <span class="pill" id="liveDot" hidden></span>
+    <a class="pill" id="goScore" href="scorer.html" hidden style="text-decoration:none">✎ Score a match</a>
+    <button class="pill" id="signOut" hidden style="border:0;cursor:pointer">Sign out</button>
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" data-view="live" aria-selected="true">Live</button>
       <button role="tab" data-view="teams" aria-selected="false">Teams</button>
@@ -154,6 +157,11 @@ input[type=text]{background:var(--panel);border:1px solid var(--line);border-rad
   </section>
 </main>
 
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
 <script>
 "use strict";
 /* ============================================================
@@ -161,7 +169,8 @@ input[type=text]{background:var(--panel);border:1px solid var(--line);border-rad
    Data arrives from, in order: #d= in the link, data.json beside
    this file, or the teacher's own browser storage on their device.
    ============================================================ */
-const BOARD_V="1";
+const BOARD_V="2";
+let SLUG=null, STAMP=null, UNSUB=null;
 const B64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 const dec1=c=>B64.indexOf(c);
 const $=(s,r=document)=>r.querySelector(s);
@@ -186,11 +195,11 @@ function decode(text){
   }):[];
   const games=[]; const raw=f[7]||"";
   const STS=["scheduled","live","final"];
-  for(let k=0;k+12<=raw.length;k+=12){
-    const c=raw.slice(k,k+12).split("").map(dec1);
+  for(let k=0;k+13<=raw.length;k+=13){
+    const c=raw.slice(k,k+13).split("").map(dec1);
     games.push({session:c[0]||null,slot:c[1]||null,court:c[2]||null,
       teamA:c[3],teamB:c[4],a:[c[5],c[6]],b:[c[7],c[8]],
-      sa:c[9],sb:c[10],status:STS[c[11]]||"scheduled"});
+      sa:c[9],sb:c[10],status:STS[c[11]]||"scheduled",duty:c[12]===63?null:c[12]});
   }
   return {meta,teams,players,games};
 }
@@ -200,8 +209,15 @@ const nameOf=i=>{const p=player(i);return p?`${p.given} ${p.last}`:"—";};
 const shortOf=i=>{const p=player(i);return p?`${p.given.split(" ")[0]} ${p.last}`:"—";};
 
 /* ---------- loading ---------- */
+function slugNow(){
+  const h=(location.hash||"").replace(/^#/,"").trim();
+  if(/^[a-z0-9][a-z0-9-]{2,63}$/i.test(h)) return h.toLowerCase();
+  try{ const v=localStorage.getItem("pj-slug"); if(v) return v; }catch(e){}
+  return (window.PJ_CONFIG||{}).defaultSlug||null;
+}
 async function load(){
   const hash=location.hash||"";
+  /* a snapshot link still works, and needs no sign-in */
   const m=hash.match(/[#&]d=([^&]+)/);
   if(m){
     try{ D=decode(decodeURIComponent(m[1])); return "link"; }
@@ -209,17 +225,36 @@ async function load(){
   }
   try{
     const res=await fetch("data.json?t="+Date.now(),{cache:"no-store"});
-    if(res.ok){
-      const j=await res.json();
-      D=decode(j.payload); return "file";
-    }
+    if(res.ok){ const j=await res.json(); D=decode(j.payload); return "file"; }
   }catch(e){}
   try{
     const raw=localStorage.getItem("ped013-pickleball-v1");
-    if(raw){ D=fromAdminState(JSON.parse(raw)); return "local"; }
+    if(raw){ const st=JSON.parse(raw); if(st&&st.players&&st.players.length){ D=fromAdminState(st); return "local"; } }
   }catch(e){}
   return null;
 }
+
+/* Signed-in live mode: one listener, updates arrive as they happen. */
+function startLive(slug){
+  SLUG=slug;
+  setLiveDot(true);
+  UNSUB=PJ.watchTournament(slug,row=>{
+    if(!row){
+      fail("No tournament has been published for class code \u201c"+slug+"\u201d yet. Check with your teacher.");
+      setLiveDot(false);
+      return;
+    }
+    try{
+      D=decode(row.payload);
+      const t=row.updatedAt;
+      D.meta.updated=(t&&t.toDate)?t.toDate().toISOString():new Date().toISOString();
+      $("#loadState").innerHTML="";
+      setLiveDot(true);
+      renderAll();
+    }catch(e){ fail("This board is older than the tournament it is reading. Ask your teacher for the latest link."); }
+  },e=>{ setLiveDot(false); });
+}
+
 /* The teacher's own device: read the admin app's state directly. */
 function fromAdminState(S){
   const ti={}; (S.teams||[]).forEach((t,i)=>ti[t.id]=i);
@@ -233,32 +268,42 @@ function fromAdminState(S){
     games:(S.games||[]).map(g=>({session:g.session,slot:g.slot,court:g.court,
       teamA:ti[g.teamA],teamB:ti[g.teamB],
       a:[pi[g.a[0]],pi[g.a[1]]],b:[pi[g.b[0]],pi[g.b[1]]],
-      sa:g.sa,sb:g.sb,status:g.status}))
+      sa:g.sa,sb:g.sb,status:g.status,duty:g.duty!=null&&ti[g.duty]!=null?ti[g.duty]:null}))
   };
 }
 function fail(msg){
   $("#loadState").innerHTML=`<div class="banner" style="margin-bottom:14px">${esc(msg)}</div>`;
 }
+function setLiveDot(ok){
+  const el=$("#liveDot"); if(!el) return;
+  el.hidden=false;
+  el.className="pill "+(ok?"live":"");
+  el.textContent=ok?"\u25cf live":"\u26a0 reconnecting";
+}
 
 /* ---------- stats ---------- */
 function stats(){
-  const T=D.teams.map(t=>({...t,gp:0,w:0,l:0,pf:0,pa:0,pts:0,tw:0,tl:0,td:0}));
+  const T=D.teams.map(t=>({...t,gp:0,w:0,l:0,pf:0,pa:0,pts:0,tw:0,tl:0}));
   const P=D.players.map(p=>({...p,gp:0,w:0,l:0,pf:0,pa:0}));
   const ties={};
   D.games.filter(g=>g.status==="final").forEach(g=>{
     const aw=g.sa>g.sb, A=T[g.teamA], B=T[g.teamB];
     if(A){A.gp++;A.pf+=g.sa;A.pa+=g.sb;aw?(A.w++,A.pts+=D.meta.winPts):A.l++;}
     if(B){B.gp++;B.pf+=g.sb;B.pa+=g.sa;aw?B.l++:(B.w++,B.pts+=D.meta.winPts);}
-    g.a.forEach(i=>{const s=P[i];if(!s)return;s.gp++;s.pf+=g.sa;s.pa+=g.sb;aw?s.w++:s.l++;});
-    g.b.forEach(i=>{const s=P[i];if(!s)return;s.gp++;s.pf+=g.sb;s.pa+=g.sa;aw?s.l++:s.w++;});
-    const k=g.teamA+"v"+g.teamB, t=ties[k]||(ties[k]={aw:0,bw:0,n:0});
-    t.n++; aw?t.aw++:t.bw++;
+    if(!g.walkover||g.walkover==="A")
+      g.a.forEach(i=>{const s=P[i];if(!s)return;s.gp++;s.pf+=g.sa;s.pa+=g.sb;aw?s.w++:s.l++;});
+    if(!g.walkover||g.walkover==="B")
+      g.b.forEach(i=>{const s=P[i];if(!s)return;s.gp++;s.pf+=g.sb;s.pa+=g.sa;aw?s.l++:s.w++;});
+    const k=g.teamA+"v"+g.teamB, t=ties[k]||(ties[k]={aw:0,bw:0,ap:0,bp:0,n:0});
+    t.n++; t.ap+=g.sa; t.bp+=g.sb; aw?t.aw++:t.bw++;
   });
   Object.entries(ties).forEach(([k,t])=>{
     if(t.n<D.meta.gamesPerTie) return;
     const [x,y]=k.split("v").map(Number), A=T[x], B=T[y];
     if(!A||!B) return;
-    if(t.aw>t.bw){A.tw++;B.tl++;} else if(t.bw>t.aw){B.tw++;A.tl++;} else {A.td++;B.td++;}
+    const aWins=t.aw>t.bw||(t.aw===t.bw&&t.ap>t.bp);
+    const bWins=t.bw>t.aw||(t.bw===t.aw&&t.bp>t.ap);
+    if(aWins){A.tw++;B.tl++;} else if(bWins){B.tw++;A.tl++;}
   });
   return {T,P};
 }
@@ -295,7 +340,7 @@ function renderLive(){
   $("#liveCourts").innerHTML = show.length ? show.map(g=>{
     const isLive=g.status==="live", isFinal=g.status==="final";
     return `<div class="court">
-      <div class="court-h">Court ${g.court||"–"} · Session ${g.session||"–"}
+      <div class="court-h">Court ${g.court||"–"} · Session ${g.session||"–"}${g.duty!=null?` · scored by ${esc(team(g.duty).name)}`:""}
         ${isLive?'<span class="pill live spacer">● LIVE</span>':isFinal?'<span class="pill final spacer">FINAL</span>':'<span class="pill spacer">UP NEXT</span>'}</div>
       <div class="court-b">
         ${sideRow(g.teamA,g.a,g.sa,isFinal&&g.sa>g.sb,isLive||isFinal)}
@@ -313,7 +358,7 @@ function renderLive(){
       const d=r.pf-r.pa, wp=r.gp?Math.round(r.w/r.gp*100):0;
       return `<tr><td class="num"><span class="rank ${i===0&&r.gp?"top":""}">${i+1}</span></td>
         <td><span class="dot" style="background:${r.color};margin-right:7px"></span><b>${esc(r.name)}</b></td>
-        <td class="num">${r.tw}-${r.tl}${r.td?"-"+r.td:""}</td>
+        <td class="num">${r.tw}-${r.tl}</td>
         <td class="num">${r.gp}</td><td class="num">${r.w}</td><td class="num">${r.l}</td>
         <td class="num">${d>0?"+":""}${d}</td><td class="num"><b>${r.pts}</b></td>
         <td><div class="row" style="gap:7px"><div class="bar" style="flex:1"><i style="width:${wp}%"></i></div>
@@ -427,20 +472,18 @@ document.addEventListener("click",e=>{
 });
 $("#meSearch").addEventListener("input",()=>{ ME=null; renderMe(); });
 
-(async function init(){
+async function offlineInit(){
   const src=await load();
   if(!D){
     $("#loadState").innerHTML=`<div class="card"><div class="card-b">
-      <h2 style="margin-bottom:8px">Waiting for tournament data</h2>
-      <p class="small muted" style="margin:0 0 10px">This board shows the standings once your teacher shares them. It gets them in one of two ways:</p>
-      <ul class="small muted" style="margin:0;padding-left:18px;line-height:1.7">
-        <li>a board link from your teacher — open that link instead of this page, or</li>
-        <li>a <code>data.json</code> file published next to this page.</li>
-      </ul></div></div>`;
-    return;
+      <h2 style="margin-bottom:8px">Waiting for your teacher</h2>
+      <p class="small muted" style="margin:0 0 10px">Nothing has been published for this class yet, or you opened this page directly.</p>
+      <p class="small muted" style="margin:0">Open the class link your teacher gave you and sign in with the student password.</p>
+      <div class="row" style="margin-top:12px"><a class="pill" href="index.html" style="text-decoration:none">Go to sign in</a></div>
+      </div></div>`;
+    return false;
   }
   renderAll();
-  try{ localStorage.setItem("pickleboard-last", location.hash||""); }catch(e){}
   if(src==="file"){
     setInterval(async()=>{
       try{
@@ -452,7 +495,37 @@ $("#meSearch").addEventListener("input",()=>{ ME=null; renderMe(); });
       }catch(e){}
     },30000);
   }
+  return true;
+}
+(function init(){
+  const hash=location.hash||"";
+  const isSnapshot=/[#&]d=/.test(hash);
+
+  if(isSnapshot || !window.PJ || !PJ.configured){
+    offlineInit();
+    return;
+  }
+  PJ.onAuth(function(u){
+    if(!u){
+      /* not signed in: fall back to anything local, else send them to sign in */
+      offlineInit().then(got=>{ if(!got) location.replace("index.html"+(hash||"")); });
+      return;
+    }
+    const slug=slugNow();
+    try{ if(slug) localStorage.setItem("pj-slug",slug); }catch(e){}
+    $("#signOut").hidden=false;
+    $("#goScore").hidden=false;
+    if(!slug){ fail("No class code. Open the link your teacher gave you."); return; }
+    $("#loadState").innerHTML=`<div class="card"><div class="card-b row" style="color:var(--ink-3);font-size:13.5px">Loading the tournament\u2026</div></div>`;
+    startLive(slug);
+  });
 })();
+document.addEventListener("click",function(e){
+  if(e.target.id==="signOut"){
+    if(UNSUB){ try{UNSUB();}catch(err){} }
+    PJ.signOut().then(()=>location.replace("index.html"));
+  }
+});
 </script>
 </body>
 </html>
