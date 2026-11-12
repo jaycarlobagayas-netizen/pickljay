@@ -46,6 +46,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;padding:0}
 body{
   background:var(--bg);
@@ -642,6 +643,7 @@ td.num,.sc{font-family:var(--f-mono)}
           <li>Game to <b id="rPoints">11</b><span id="rBy2">, win by 2</span>, hard cap <b id="rCap">15</b>.</li>
           <li>Teams <b>switch ends</b> when a side first reaches <b id="rSwitch">6</b>.</li>
           <li>Serve passes to the other side whenever the receiving side wins the rally.</li>
+          <li>Every pair is drawn <b>at random from that team\u2019s own roster</b> \u2014 partners are never taken from another team.</li>
           <li id="rRot">Partners rotate: no student is paired with the same teammate twice.</li>
           <li>Team tie = <b id="rGPT">3</b> doubles games; the team winning most games takes the tie.</li>
         </ul>
@@ -897,17 +899,49 @@ const teamColor = id => (T(id)||{}).color || "#777";
 /* ============================================================
    TEAMS
    ============================================================ */
-function buildTeams(n){
+/* Every pair is drawn from one team's own roster. So the moment anyone moves
+   team, an existing schedule is wrong: its pairs belong to the old rosters.
+   Clear it rather than leave matches on screen whose players have moved. */
+function pairsOutOfTeam(){
+  const t={}; S.players.forEach(p=>t[p.id]=p.teamId);
+  let n=0;
+  S.games.forEach(g=>{
+    (g.a||[]).forEach(id=>{ if(t[id]!==g.teamA) n++; });
+    (g.b||[]).forEach(id=>{ if(t[id]!==g.teamB) n++; });
+  });
+  return n;
+}
+function invalidateSchedule(){ S.games=[]; S.attendance={}; PAIR_BLOCK=null; }
+/* Runs `after` once it is safe to move students between teams. Only asks when
+   results would be lost, so the ordinary case stays immediate. */
+function guardTeamChange(after){
+  if(!S.games.length) return after();
+  const played=S.games.filter(g=>g.status==="final").length;
+  if(!played){
+    invalidateSchedule();
+    toast("Teams changed \u2014 generate the schedule again");
+    return after();
+  }
+  ask(`Changing teams makes the schedule invalid \u2014 its pairs were drawn from the old rosters. `
+     +`This clears all ${S.games.length} matches, including ${played} recorded result${played>1?"s":""}. Continue?`,
+     "Clear and continue").then(yes=>{ if(!yes) return; invalidateSchedule(); after(); });
+}
+
+function buildTeams(n){ guardTeamChange(()=>doBuildTeams(n)); }
+function doBuildTeams(n){
   const keep = S.teams.slice(0,n);
   for(let i=keep.length;i<n;i++) keep.push({id:uid("t"), name:"Team "+(i+1), color:PALETTE[i%PALETTE.length]});
   const ids = new Set(keep.map(t=>t.id));
   S.players.forEach(p=>{ if(p.teamId && !ids.has(p.teamId)) p.teamId=null; });
   S.teams = keep;
-  S.games = S.games.filter(g=>ids.has(g.teamA)&&ids.has(g.teamB));
+  S.games = [];
   save(); renderTeams(); renderAll();
 }
 function autoAssign(mode){
   if(!S.teams.length) return toast("Create teams first");
+  guardTeamChange(()=>doAutoAssign(mode));
+}
+function doAutoAssign(mode){
   const n = S.teams.length;
   const list = mode==="random" ? shuffle(S.players) : S.players.slice();
   list.forEach((p,i)=>{
@@ -1338,6 +1372,16 @@ function renderSchedule(){
     $("#sessionStrip").innerHTML=""; $("#sessionBody").innerHTML="";
     return;
   }
+  const offTeam=pairsOutOfTeam();
+  if(offTeam){
+    $("#schedWarn").innerHTML=`<div class="banner" style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:5px">This schedule no longer matches the teams</div>
+      <div style="font-weight:500;line-height:1.55">${offTeam} player slot${offTeam>1?"s":""} belong to a student who has since moved team, so these pairings are out of date.
+      Press <b>Generate schedule</b> to draw fresh pairs from the current rosters.</div></div>`;
+    $("#sessionStrip").innerHTML=""; $("#sessionBody").innerHTML="";
+    renderRotation();
+    return;
+  }
   $("#schedWarn").innerHTML = (total && placed<total)
     ? `<div class="banner" style="margin-bottom:12px">⚠ ${total-placed} match${total-placed>1?"es":""} could not fit in ${S.meta.sessions} sessions × ${S.meta.slotsPerSession} slots × ${S.meta.courts} courts (capacity ${cap}). Add a slot per session in Setup, or lower “games per team tie”.</div>`
     : "";
@@ -1485,8 +1529,11 @@ function renderCourts(){
   const cur=S.ui.session||1;
   sel.innerHTML=Array.from({length:S.meta.sessions},(_,i)=>i+1)
     .map(s=>`<option value="${s}" ${s===cur?"selected":""}>Session ${s}</option>`).join("");
-  $("#courtBody").innerHTML = S.games.length ? sessionHTML(cur,false)
-    : `<div class="empty">Generate a schedule first.</div>`;
+  $("#courtBody").innerHTML = !S.games.length
+    ? `<div class="empty">Generate a schedule first.</div>`
+    : pairsOutOfTeam()
+      ? `<div class="banner">Teams have changed since this schedule was drawn. Generate it again from the Schedule tab.</div>`
+      : sessionHTML(cur,false);
   const live=S.games.filter(g=>g.status==="live").length;
   $("#liveHint").textContent = live?`${live} live now`:"tap a match to score";
 }
@@ -2396,11 +2443,12 @@ document.addEventListener("click",e=>{
   const dp=t.closest("[data-delplayer]");
   if(dp){
     const p=P(dp.dataset.delplayer); if(!p) return;
-    ask(`Remove ${fullName(p)} from the class list? Any match they were scheduled in is removed too.`,"Remove").then(yes=>{
+    ask(`Remove ${fullName(p)} from the class list? The schedule is cleared, because the remaining pairs were drawn around them.`,"Remove").then(yes=>{
       if(!yes) return;
-      S.players=S.players.filter(x=>x.id!==p.id);
-      S.games=S.games.filter(g=>!g.a.includes(p.id)&&!g.b.includes(p.id));
-      save(); renderAll();
+      guardTeamChange(()=>{
+        S.players=S.players.filter(x=>x.id!==p.id);
+        save(); renderAll();
+      });
     });
     return;
   }
@@ -2416,7 +2464,12 @@ document.addEventListener("keydown",e=>{
 },true);
 document.addEventListener("change",e=>{
   const as=e.target.closest("[data-assign]");
-  if(as){ const p=P(as.dataset.assign); if(p){ p.teamId=as.value||null; save(); renderTeams(); renderSchedule(); renderStandings(); renderPlayers(); } }
+  if(as){
+    const p=P(as.dataset.assign); if(!p) return;
+    const want=as.value||null;
+    as.value=p.teamId||"";                       // hold until the guard answers
+    guardTeamChange(()=>{ p.teamId=want; save(); renderAll(); });
+  }
   if(e.target.id==="courtSession"){ S.ui.session=+e.target.value; save(); renderCourts(); renderSchedule(); }
   if(e.target.id==="attSession"){ S.ui.attSession=+e.target.value; save(); renderAttendance(); }
   if(e.target.id==="dutySession"){ S.ui.dutySession=+e.target.value; save(); renderDuties(); }
@@ -2447,7 +2500,9 @@ $("#edClose").addEventListener("click",()=>$("#editOverlay").classList.remove("o
 $("#buildTeams").addEventListener("click",()=>buildTeams(Math.max(2,Math.min(12,+$("#teamCount").value||6))));
 $("#autoRandom").addEventListener("click",()=>autoAssign("random"));
 $("#autoSnake").addEventListener("click",()=>autoAssign("snake"));
-$("#clearAssign").addEventListener("click",()=>{S.players.forEach(p=>p.teamId=null);save();renderAll();});
+$("#clearAssign").addEventListener("click",()=>{
+  guardTeamChange(()=>{ S.players.forEach(p=>p.teamId=null); save(); renderAll(); });
+});
 $("#addStudent").addEventListener("click",()=>{
   const raw=prompt("Add student (format: Last, First Middle)"); if(!raw) return;
   const n=parseName(raw);
